@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-11-13
+
+### Fixed
+- **Execute --stdin bug**: Fixed ENOENT error when using `execute --stdin` command
+  - Changed temporary file location from `workspaceDir` to OS temp directory (`os.tmpdir()`)
+  - Added process ID to temp filename for better isolation (`.mcpac-temp-{pid}-{timestamp}.ts`)
+  - Ensures cross-platform compatibility (macOS, Linux, Windows)
+- **Missing stdout with --stdin**: Fixed console.log output not appearing when using `--stdin`
+  - stdin was being read twice (once for type checking, once for execution)
+  - Now reads stdin once and reuses the value for both operations
+
 ## [0.2.0] - 2025-11-13
 
 ### Added
