@@ -433,3 +433,47 @@ The project version is defined in two locations that must be kept in sync:
 4. **Client method is close()** - Not `disconnect()` (will error)
 5. **Error type must be Error object** - Not string in test expectations
 6. **Bytecode mode unavailable** - ESM + top-level await incompatible
+
+## Documentation Updates
+
+When adding or modifying features, update the following documentation files:
+
+### High Priority (Must Update)
+
+1. **CHANGELOG.md**
+   - Add entry to `[Unreleased]` section
+   - Categorize under: Added, Changed, Fixed, Deprecated, Removed, Security
+   - Include clear description of user-facing changes
+   - List any new dependencies
+
+2. **README.md**
+   - Add new command examples in the Usage section
+   - Update feature list if adding major functionality
+   - Add examples demonstrating the new feature
+   - Update troubleshooting section if applicable
+
+3. **CLAUDE.md** (this file)
+   - Update Essential Commands section with new commands
+   - Add architectural details for new components
+   - Document any new patterns or gotchas
+   - Update testing strategy if test patterns change
+
+### Medium Priority (Update if Relevant)
+
+4. **src/cli.ts**
+   - Update "Common Workflow" help text if command flow changes
+   - Keep workflow examples concise and representative
+
+5. **src/commands/getting-started.ts**
+   - Add examples of new commands in the interactive guide
+   - Keep step-by-step flow consistent with actual usage
+
+6. **src/commands/info.ts**
+   - Update "Next steps" suggestions to include new features
+   - Provide helpful hints for discovery
+
+### Low Priority (Optional)
+
+7. **src/commands/examples.ts**
+   - Add code examples demonstrating new features
+   - Show real-world use cases
