@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-11-13
+
 ### Added
 - **Direct Tool Invocation**: New `tools call` command for invoking MCP tools directly from CLI without writing code
   - Multiple argument input methods with priority ordering: stdin > JSON string > named flags
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON Schema validation with `--no-validate` flag to skip validation
   - Proper exit codes: 0 (success), 1 (argument error), 2 (tool error), 3 (connection error)
   - Automatic cleanup of MCP connections on exit
+- **Documentation**: Added comprehensive documentation update guidelines in CLAUDE.md
 
 ### Dependencies
 - Added `ajv@8.12.0` for JSON Schema validation
