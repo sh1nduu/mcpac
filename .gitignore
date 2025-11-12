@@ -1,0 +1,45 @@
+# Bun
+node_modules/
+bun.lockb
+
+# 生成ファイル
+servers/
+dist/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ワークスペース（ユーザー生成ファイル）
+workspace/*
+!workspace/.gitkeep
+
+# テスト用フィクスチャ（Git管理対象外）
+tests/fixtures/*
+!tests/fixtures/.gitkeep
+
+# テストで生成されたファイル
+tests/generated/
+tests/test-config.json
+tests/workspace/
+tests/unit/test-*.json
+tests/unit/workspace/
+tests/e2e/test-*.json
+tests/e2e/generated-servers/
+tests/e2e/error-servers/
+tests/e2e/workspace/
+tests/e2e/error-workspace/
+
+# ビルド成果物
+mcpac
+mcpac-*
+
+# 設定ファイル（ローカル環境用）
+config/mcp-servers.json

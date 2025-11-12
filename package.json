@@ -1,0 +1,59 @@
+{
+  "name": "mcpac",
+  "version": "0.1.0",
+  "description": "MCP as Code - Execute code with MCP servers as libraries",
+  "type": "module",
+  "bin": {
+    "mcpac": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "check": "biome check --write .",
+    "check:ci": "biome ci .",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "test": "bun test",
+    "test:unit": "bun test tests/unit",
+    "test:e2e": "bun test tests/e2e",
+    "test:watch": "bun test --watch",
+    "build": "bun run typecheck && bun build --compile --minify --sourcemap ./src/cli.ts --outfile mcpac",
+    "build:all": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:macos-intel && bun run build:macos-arm && bun run build:windows",
+    "build:linux-x64": "bun build --compile --target=bun-linux-x64 --minify ./src/cli.ts --outfile dist/mcpac-linux-x64",
+    "build:linux-arm64": "bun build --compile --target=bun-linux-arm64 --minify ./src/cli.ts --outfile dist/mcpac-linux-arm64",
+    "build:macos-intel": "bun build --compile --target=bun-darwin-x64 --minify ./src/cli.ts --outfile dist/mcpac-darwin-x64",
+    "build:macos-arm": "bun build --compile --target=bun-darwin-arm64 --minify ./src/cli.ts --outfile dist/mcpac-darwin-arm64",
+    "build:windows": "bun build --compile --target=bun-windows-x64 --minify ./src/cli.ts --outfile dist/mcpac-windows-x64",
+    "clean": "rm -rf dist mcpac mcpac-* servers",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "code-generation",
+    "ai-agent",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.1",
+    "commander": "^12.0.0",
+    "json-schema-to-typescript": "^15.0.4",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.4",
+    "@types/bun": "^1.3.2",
+    "@types/node": "^22.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6"
+  },
+  "lint-staged": {
+    "*.{ts,js,json}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.ts": [
+      "bash -c 'tsc --noEmit'"
+    ]
+  }
+}
