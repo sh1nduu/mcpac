@@ -16,7 +16,7 @@ export async function callMCPTool<T = unknown>(
   input: Record<string, unknown>,
 ): Promise<T> {
   // Get config path from environment variable
-  const configPath = process.env.MCPC_CONFIG_PATH || './config/mcp-servers.json';
+  const configPath = process.env.MCPAC_CONFIG_PATH || './config/mcp-servers.json';
   const manager = MCPManager.getInstance(configPath);
 
   try {

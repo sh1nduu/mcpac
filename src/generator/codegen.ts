@@ -35,7 +35,7 @@ export class CodeGenerator {
     );
 
     return {
-      imports: `import { callMCPTool, type MCPToolResult } from '../_mcpc_runtime.js';`,
+      imports: `import { callMCPTool, type MCPToolResult } from '../_mcpac_runtime.js';`,
       typeDefinitions: `${inputTypeCode}\n${outputTypeCode}`,
       functionCode,
     };
@@ -43,7 +43,7 @@ export class CodeGenerator {
 
   /**
    * Generate runtime shim code
-   * Placed as servers/_mcpc_runtime.ts
+   * Placed as servers/_mcpac_runtime.ts
    */
   generateRuntimeShim(): string {
     // Replace version placeholders in the template

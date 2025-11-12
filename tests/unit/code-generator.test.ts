@@ -75,7 +75,7 @@ describe('CodeGenerator', () => {
     // Check imports contain callMCPTool and MCPToolResult type from runtime
     expect(generatedCode.imports).toContain('callMCPTool');
     expect(generatedCode.imports).toContain('type MCPToolResult');
-    expect(generatedCode.imports).toContain('../_mcpc_runtime.js');
+    expect(generatedCode.imports).toContain('../_mcpac_runtime.js');
 
     // Check type definitions contain input and output types
     expect(generatedCode.typeDefinitions).toContain('ReadFileInput');

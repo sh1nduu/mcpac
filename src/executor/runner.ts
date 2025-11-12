@@ -37,7 +37,7 @@ export class CodeRunner {
    */
   async executeCode(code: string, options: ExecuteOptions): Promise<ExecutionResult> {
     // Write to temporary file
-    const tempFile = join(options.context.workspaceDir, `.mcpc-temp-${Date.now()}.ts`);
+    const tempFile = join(options.context.workspaceDir, `.mcpac-temp-${Date.now()}.ts`);
 
     try {
       await writeFile(tempFile, code, 'utf-8');

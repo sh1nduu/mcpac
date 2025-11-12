@@ -72,7 +72,7 @@ Example Code:
         }
 
         // Initialize
-        const configPath = process.env.MCPC_CONFIG_PATH;
+        const configPath = process.env.MCPAC_CONFIG_PATH;
         const manager = MCPManager.getInstance(configPath);
 
         const contextMgr = new ContextManager(manager);
@@ -87,7 +87,7 @@ Example Code:
         }
 
         // Type checking (if enabled)
-        const shouldTypeCheck = options.typecheck !== false && process.env.MCPC_TYPECHECK !== '0';
+        const shouldTypeCheck = options.typecheck !== false && process.env.MCPAC_TYPECHECK !== '0';
 
         if (shouldTypeCheck) {
           output.verbose('Type checking code...');

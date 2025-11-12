@@ -28,7 +28,7 @@ Prerequisites:
 
 Output:
   Generated files will be placed in ./servers/ directory:
-    • _mcpc_runtime.ts       - Runtime library for MCP communication
+    • _mcpac_runtime.ts       - Runtime library for MCP communication
     • <server-name>/<tool>.ts  - Type-safe tool functions
     • index.ts                 - Main exports
 
@@ -46,7 +46,7 @@ Next Steps:
         output.setLevel('verbose');
       }
 
-      const configPath = process.env.MCPC_CONFIG_PATH;
+      const configPath = process.env.MCPAC_CONFIG_PATH;
       const manager = MCPManager.getInstance(configPath);
 
       try {
@@ -82,7 +82,7 @@ Next Steps:
           output.success('\n✓ Code generation complete');
           output.info(`  Generated code for ${servers.length} server(s)`);
           output.info(`  Output: ${options.output}`);
-          output.info(`  Runtime: ${options.output}/_mcpc_runtime.ts`);
+          output.info(`  Runtime: ${options.output}/_mcpac_runtime.ts`);
           output.info(`\n💡 Next: Run 'mcpac tools list' to explore available tools`);
         }
       } catch (error) {

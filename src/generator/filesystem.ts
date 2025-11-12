@@ -48,14 +48,14 @@ export class FilesystemManager {
 
   /**
    * Generate runtime shim
-   * Placed as servers/_mcpc_runtime.ts
+   * Placed as servers/_mcpac_runtime.ts
    */
   async ensureRuntimeShim(): Promise<void> {
     if (this.runtimeGenerated) return;
 
     const { CodeGenerator } = await import('./codegen.js');
     const codegen = new CodeGenerator();
-    const runtimePath = join(this.outputDir, '_mcpc_runtime.ts');
+    const runtimePath = join(this.outputDir, '_mcpac_runtime.ts');
 
     await writeFile(runtimePath, codegen.generateRuntimeShim(), 'utf-8');
     this.runtimeGenerated = true;

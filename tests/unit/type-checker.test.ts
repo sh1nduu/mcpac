@@ -167,7 +167,7 @@ const result = await listDirectory({ path: 123 });
       const formatted = checker.formatErrors(result.errors);
 
       expect(formatted).toContain('error TS');
-      expect(formatted).toContain('.mcpc-typecheck-');
+      expect(formatted).toContain('.mcpac-typecheck-');
     }
   });
 

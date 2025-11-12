@@ -42,9 +42,9 @@ export class ContextManager {
     // Set environment variables
     const env = {
       ...process.env,
-      MCPC_SERVERS_PATH: './servers',
-      MCPC_CONFIG_PATH: this.manager.getConfigPath(),
-      MCPC_WORKSPACE: workspaceDir,
+      MCPAC_SERVERS_PATH: './servers',
+      MCPAC_CONFIG_PATH: this.manager.getConfigPath(),
+      MCPAC_WORKSPACE: workspaceDir,
     };
 
     return {

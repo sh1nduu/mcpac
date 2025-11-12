@@ -124,7 +124,7 @@ mcpac generate
 Generated files:
 ```
 servers/
-├── _mcpc_runtime.ts      # Runtime library
+├── _mcpac_runtime.ts      # Runtime library
 ├── filesystem/
 │   ├── index.ts            # Exports
 │   ├── read_file.ts        # Generated function

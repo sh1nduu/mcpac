@@ -36,7 +36,7 @@ export class TypeChecker {
     const { writeFileSync, unlinkSync } = await import('node:fs');
     const { join } = await import('node:path');
 
-    const tempFile = join(process.cwd(), `.mcpc-typecheck-${Date.now()}.ts`);
+    const tempFile = join(process.cwd(), `.mcpac-typecheck-${Date.now()}.ts`);
     writeFileSync(tempFile, code);
 
     try {

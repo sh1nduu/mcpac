@@ -10,7 +10,7 @@ import {
   type IPCResponse,
 } from './protocol.js';
 
-const DEBUG = process.env.MCPC_DEBUG === '1';
+const DEBUG = process.env.MCPAC_DEBUG === '1';
 
 function debugLog(...args: unknown[]): void {
   if (DEBUG) {
@@ -36,7 +36,7 @@ export class IPCServer {
 
   constructor(mcpManager: MCPManager, socketPath?: string) {
     this.mcpManager = mcpManager;
-    this.socketPath = socketPath || `/tmp/mcpc-${process.pid}.sock`;
+    this.socketPath = socketPath || `/tmp/mcpac-${process.pid}.sock`;
     this.server = createServer();
   }
 

@@ -11,16 +11,16 @@ export const infoCommand = new Command('info')
   .option('--json', 'Output in JSON format')
   .action(async (options) => {
     try {
-      const configPath = process.env.MCPC_CONFIG_PATH;
+      const configPath = process.env.MCPAC_CONFIG_PATH;
       const manager = MCPManager.getInstance(configPath);
       const config = await manager.loadConfig();
       const serverNames = Object.keys(config);
 
       const outputDir = './servers';
-      const workspaceDir = process.env.MCPC_WORKSPACE || './workspace';
+      const workspaceDir = process.env.MCPAC_WORKSPACE || './workspace';
 
       // Check generated code status
-      const hasRuntime = existsSync(join(outputDir, '_mcpc_runtime.ts'));
+      const hasRuntime = existsSync(join(outputDir, '_mcpac_runtime.ts'));
       const generatedServers: string[] = [];
 
       if (existsSync(outputDir)) {
@@ -106,9 +106,9 @@ Configured Servers: ${serverNames.length}`);
 
         console.log('\nGenerated Code Status:');
         if (hasRuntime) {
-          console.log(`  ✓ ${outputDir}/_mcpc_runtime.ts`);
+          console.log(`  ✓ ${outputDir}/_mcpac_runtime.ts`);
         } else {
-          console.log(`  ✗ ${outputDir}/_mcpc_runtime.ts`);
+          console.log(`  ✗ ${outputDir}/_mcpac_runtime.ts`);
         }
 
         if (generatedServers.length > 0) {

@@ -50,7 +50,7 @@ Find more servers at: https://github.com/modelcontextprotocol/servers
 ## Understanding the Generated Code
 
 After running 'mcpac generate', you'll have:
-  • servers/_mcpc_runtime.ts - Runtime library for MCP communication
+  • servers/_mcpac_runtime.ts - Runtime library for MCP communication
   • servers/<server-name>/*.ts - Type-safe tool functions
   • servers/index.ts - Main exports
 

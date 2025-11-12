@@ -58,7 +58,7 @@ describe('E2E: CLI Workflow', () => {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -77,7 +77,7 @@ describe('E2E: CLI Workflow', () => {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -96,7 +96,7 @@ describe('E2E: CLI Workflow', () => {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -115,7 +115,7 @@ describe('E2E: CLI Workflow', () => {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -146,7 +146,7 @@ console.log('SUCCESS:', content);
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdout: 'pipe',
       stderr: 'pipe',
@@ -167,7 +167,7 @@ console.log('SUCCESS:', content);
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdin: 'pipe',
       stdout: 'pipe',
@@ -189,7 +189,7 @@ console.log('SUCCESS:', content);
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MCPC_CONFIG_PATH: TEST_CONFIG_PATH,
+        MCPAC_CONFIG_PATH: TEST_CONFIG_PATH,
       },
       stdout: 'pipe',
       stderr: 'pipe',

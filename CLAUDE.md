@@ -141,7 +141,7 @@ bun run dev server add remote-server --type http --url https://api.example.com/m
    - `parser.ts`: JSON Schema → TypeScript types via json-schema-to-typescript (exports `SchemaParser` class)
    - `filesystem.ts`: File operations (exports `FilesystemManager` class)
    - `runtime-template.ts`: Runtime template for generated code
-   - Output: `servers/<serverName>/<toolName>.ts` + `index.ts` + `servers/_mcpc_runtime.ts`
+   - Output: `servers/<serverName>/<toolName>.ts` + `index.ts` + `servers/_mcpac_runtime.ts`
 
 3. **Execution Layer** (`src/executor/`)
    - `context.ts`: Prepares execution environment with env vars (MCPAC_CONFIG_PATH, MCPAC_WORKSPACE)

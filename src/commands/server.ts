@@ -43,7 +43,7 @@ Examples (HTTP):
     )
     .action(async (name, options) => {
       try {
-        const configPath = process.env.MCPC_CONFIG_PATH;
+        const configPath = process.env.MCPAC_CONFIG_PATH;
         const manager = MCPManager.getInstance(configPath);
 
         const transportType = options.type || 'stdio';
@@ -111,7 +111,7 @@ Examples (HTTP):
     .description('List all configured servers')
     .action(async () => {
       try {
-        const configPath = process.env.MCPC_CONFIG_PATH;
+        const configPath = process.env.MCPAC_CONFIG_PATH;
         const manager = MCPManager.getInstance(configPath);
         const servers = await manager.listServers();
 
@@ -152,7 +152,7 @@ Examples (HTTP):
     .description('Remove a server')
     .action(async (name) => {
       try {
-        const configPath = process.env.MCPC_CONFIG_PATH;
+        const configPath = process.env.MCPAC_CONFIG_PATH;
         const manager = MCPManager.getInstance(configPath);
         await manager.removeServer(name);
         console.log(`✓ Server '${name}' removed`);
@@ -167,7 +167,7 @@ Examples (HTTP):
     .command('test <name>')
     .description('Test connection to a server')
     .action(async (name) => {
-      const configPath = process.env.MCPC_CONFIG_PATH;
+      const configPath = process.env.MCPAC_CONFIG_PATH;
       const manager = MCPManager.getInstance(configPath);
 
       try {

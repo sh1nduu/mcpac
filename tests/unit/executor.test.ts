@@ -62,8 +62,8 @@ describe('CodeRunner', () => {
 
     expect(context.workspaceDir).toBe(TEST_WORKSPACE);
     expect(context.env).toBeDefined();
-    expect(context.env.MCPC_CONFIG_PATH).toBe(TEST_CONFIG_PATH);
-    expect(context.env.MCPC_WORKSPACE).toBe(TEST_WORKSPACE);
+    expect(context.env.MCPAC_CONFIG_PATH).toBe(TEST_CONFIG_PATH);
+    expect(context.env.MCPAC_WORKSPACE).toBe(TEST_WORKSPACE);
   });
 
   test('should execute simple code successfully', async () => {

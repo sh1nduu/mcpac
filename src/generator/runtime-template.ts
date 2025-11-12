@@ -1,7 +1,7 @@
 /**
  * Runtime template for generated MCP code
  * This template contains the IPC client implementation that will be
- * embedded in the generated servers/ directory as _mcpc_runtime.ts
+ * embedded in the generated servers/ directory as _mcpac_runtime.ts
  *
  * Note: The version string below will be replaced by generateRuntimeShim()
  * with the current package version at code generation time.

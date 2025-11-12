@@ -3,7 +3,7 @@ import type { MCPManager } from '../mcp/manager.js';
 import type { ExecutionContext } from './context.js';
 import type { ExecutionResult } from './runner.js';
 
-const DEBUG = process.env.MCPC_DEBUG === '1';
+const DEBUG = process.env.MCPAC_DEBUG === '1';
 
 function debugLog(...args: unknown[]): void {
   if (DEBUG) {
@@ -132,7 +132,7 @@ export class IPCExecutor {
     const { writeFile, unlink } = await import('node:fs/promises');
     const { join } = await import('node:path');
 
-    const tempFile = join(options.context.workspaceDir, `.mcpc-temp-${Date.now()}.ts`);
+    const tempFile = join(options.context.workspaceDir, `.mcpac-temp-${Date.now()}.ts`);
 
     try {
       await writeFile(tempFile, code, 'utf-8');

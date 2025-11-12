@@ -36,7 +36,7 @@ export * from './write_file.js';
       `${TEST_OUTPUT_DIR}/demo-filesystem/read_file.ts`,
       `// Auto-generated - do not edit
 
-import { callMCPTool, type MCPToolResult } from '../_mcpc_runtime.js';
+import { callMCPTool, type MCPToolResult } from '../_mcpac_runtime.js';
 
 export interface ReadFileInput {
   path: string;
@@ -62,7 +62,7 @@ export async function readFile(
       `${TEST_OUTPUT_DIR}/demo-filesystem/write_file.ts`,
       `// Auto-generated - do not edit
 
-import { callMCPTool, type MCPToolResult } from '../_mcpc_runtime.js';
+import { callMCPTool, type MCPToolResult } from '../_mcpac_runtime.js';
 
 export interface WriteFileInput {
   path: string;
