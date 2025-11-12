@@ -131,8 +131,9 @@ export class IPCExecutor {
     // Create temporary file
     const { writeFile, unlink } = await import('node:fs/promises');
     const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
 
-    const tempFile = join(options.context.workspaceDir, `.mcpac-temp-${Date.now()}.ts`);
+    const tempFile = join(tmpdir(), `.mcpac-temp-${process.pid}-${Date.now()}.ts`);
 
     try {
       await writeFile(tempFile, code, 'utf-8');

@@ -86,6 +86,12 @@ Example Code:
           console.log();
         }
 
+        // Read stdin once if needed (stdin can only be read once)
+        let stdinCode: string | undefined;
+        if (options.stdin) {
+          stdinCode = await Bun.stdin.text();
+        }
+
         // Type checking (if enabled)
         const shouldTypeCheck = options.typecheck !== false && process.env.MCPAC_TYPECHECK !== '0';
 
@@ -97,9 +103,8 @@ Example Code:
             typeCheckResult = await typeChecker.checkFile(options.file, context);
           } else if (options.code) {
             typeCheckResult = await typeChecker.checkCode(options.code, context);
-          } else if (options.stdin) {
-            const code = await Bun.stdin.text();
-            typeCheckResult = await typeChecker.checkCode(code, context);
+          } else if (stdinCode !== undefined) {
+            typeCheckResult = await typeChecker.checkCode(stdinCode, context);
           }
 
           if (typeCheckResult?.hasErrors) {
@@ -133,10 +138,9 @@ Example Code:
             timeout,
             dryRun: options.dryRun,
           });
-        } else if (options.stdin) {
-          const code = await Bun.stdin.text();
+        } else if (stdinCode !== undefined) {
           output.info('Executing code from stdin...');
-          result = await ipcExecutor.executeCode(code, {
+          result = await ipcExecutor.executeCode(stdinCode, {
             mcpManager: manager,
             context,
             timeout,

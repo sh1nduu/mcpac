@@ -1,4 +1,5 @@
 import { unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ExecutionContext } from './context.js';
 
@@ -37,7 +38,7 @@ export class CodeRunner {
    */
   async executeCode(code: string, options: ExecuteOptions): Promise<ExecutionResult> {
     // Write to temporary file
-    const tempFile = join(options.context.workspaceDir, `.mcpac-temp-${Date.now()}.ts`);
+    const tempFile = join(tmpdir(), `.mcpac-temp-${process.pid}-${Date.now()}.ts`);
 
     try {
       await writeFile(tempFile, code, 'utf-8');
