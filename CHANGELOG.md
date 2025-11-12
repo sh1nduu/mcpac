@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-11-12
+
+### Fixed
+- Renamed all `mcpc` references to `mcpac` for consistency throughout the codebase
+  - Environment variables: `MCPC_*` → `MCPAC_*` (CONFIG_PATH, WORKSPACE, SERVERS_PATH, TYPECHECK, DEBUG)
+  - File names: `_mcpc_runtime.ts` → `_mcpac_runtime.ts`
+  - Temporary files: `.mcpc-temp-*.ts` → `.mcpac-temp-*.ts`, `.mcpc-typecheck-*.ts` → `.mcpac-typecheck-*.ts`
+  - IPC socket paths: `/tmp/mcpc-*.sock` → `/tmp/mcpac-*.sock`
+
+### Changed
+- Updated CLAUDE.md with accurate architecture documentation
+  - Fixed generator layer file names (orchestrator.ts → index.ts, etc.)
+  - Added comprehensive HTTP transport documentation
+  - Documented all CLI commands and options
+  - Added version management guidelines
+  - Removed obsolete Phase Documentation section
+
 ## [0.1.0] - 2025-11-12
 
 ### Added
