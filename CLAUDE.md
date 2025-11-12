@@ -20,10 +20,36 @@ MCPaC (MCP as Code) converts Model Context Protocol (MCP) servers into TypeScrip
 ## Essential Commands
 
 ```bash
-# Development
-bun run dev server add <name> --command <cmd> --args <args...>  # Add MCP server
-bun run dev generate                                             # Generate TypeScript code
-bun run dev execute -f <file>                                    # Execute code
+# Getting Started
+bun run dev getting-started                                      # Interactive setup guide
+
+# Server Management
+bun run dev server add <name> --command <cmd> --args <args...>  # Add STDIO MCP server
+bun run dev server add <name> --type http --url <url>           # Add HTTP MCP server
+bun run dev server test <name>                                   # Test server connection
+bun run dev server list                                          # List all servers
+bun run dev server remove <name>                                 # Remove server
+
+# Code Generation
+bun run dev generate                                             # Generate code for all servers
+bun run dev generate -s <name>                                   # Generate code for specific server
+bun run dev generate --force                                     # Force overwrite existing files
+
+# Code Execution
+bun run dev execute -f <file>                                    # Execute TypeScript file
+bun run dev execute --stdin                                      # Read code from stdin
+bun run dev execute -f <file> --no-typecheck                    # Skip type checking
+bun run dev execute -f <file> -q                                 # Quiet mode
+bun run dev execute -f <file> -v                                 # Verbose mode
+
+# Tools Management
+bun run dev tools list                                           # List all available tools
+bun run dev tools list -s <name>                                 # List tools for specific server
+bun run dev tools describe <function_name>                       # Show detailed tool description
+
+# Information
+bun run dev info                                                 # Show current status
+bun run dev examples                                             # View usage examples
 
 # Quality Checks
 bun run typecheck          # TypeScript type checking
@@ -44,26 +70,85 @@ bun run build:all          # Build for all platforms
 bun run clean              # Clean build artifacts
 ```
 
+## Transport Types
+
+MCPaC supports two transport types for connecting to MCP servers:
+
+### STDIO Transport
+Standard input/output based communication for local MCP servers:
+```bash
+# Add STDIO server
+bun run dev server add filesystem --command npx --args -y @modelcontextprotocol/server-filesystem /path/to/files
+
+# With environment variables
+bun run dev server add myserver --command npx --args -y my-mcp-server --env KEY1=value1 --env KEY2=value2
+```
+
+**Config format:**
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
+      "env": { "KEY": "value" }
+    }
+  }
+}
+```
+
+### HTTP Transport
+HTTP-based communication for remote MCP servers:
+```bash
+# Add HTTP server
+bun run dev server add remote-server --type http --url https://api.example.com/mcp
+
+# With custom headers (e.g., authentication)
+bun run dev server add remote-server --type http --url https://api.example.com/mcp --headers Authorization "Bearer token123" --headers X-Custom-Header "value"
+```
+
+**Config format:**
+```json
+{
+  "mcpServers": {
+    "remote-server": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer token123",
+        "X-Custom-Header": "value"
+      }
+    }
+  }
+}
+```
+
 ## Architecture
 
 ### Three-Layer System
 
 1. **MCP Client Layer** (`src/mcp/`)
    - `manager.ts`: Singleton managing multiple MCP server connections
-   - `client.ts`: Stdio-based JSON-RPC 2.0 client for individual servers
+   - `client.ts`: JSON-RPC 2.0 client for individual servers (supports STDIO and HTTP transports)
+   - `types.ts`: Type definitions for MCP server configurations
+   - `tool-caller.ts`: Common tool calling function used by generated code
    - Config stored in nested format: `{ "mcpServers": { "serverName": { command, args, env } } }`
+   - Supports both STDIO (command/args) and HTTP (url/headers) transport types
    - Singleton reset required in tests: `MCPManager.instance = null`
 
 2. **Code Generation Layer** (`src/generator/`)
-   - `orchestrator.ts`: Coordinates generation for all servers
-   - `code-generator.ts`: Converts MCP tool definitions to TypeScript
-   - `schema-converter.ts`: JSON Schema → TypeScript types via json-schema-to-typescript
-   - Output: `servers/<serverName>/<toolName>.ts` + `index.ts`
+   - `index.ts`: Main orchestrator, coordinates generation for all servers (exports `Generator` class)
+   - `codegen.ts`: Converts MCP tool definitions to TypeScript (exports `CodeGenerator` class)
+   - `parser.ts`: JSON Schema → TypeScript types via json-schema-to-typescript (exports `SchemaParser` class)
+   - `filesystem.ts`: File operations (exports `FilesystemManager` class)
+   - `runtime-template.ts`: Runtime template for generated code
+   - Output: `servers/<serverName>/<toolName>.ts` + `index.ts` + `servers/_mcpc_runtime.ts`
 
 3. **Execution Layer** (`src/executor/`)
    - `context.ts`: Prepares execution environment with env vars (MCPAC_CONFIG_PATH, MCPAC_WORKSPACE)
    - `runner.ts`: Spawns Bun processes to execute TypeScript code
    - `result.ts`: Handles exit codes, stdout/stderr
+   - `type-checker.ts`: Type checking functionality for generated code
+   - `ipc-executor.ts`: IPC-based execution for advanced use cases
    - User code imports generated functions, which call back to MCP servers via MCPManager
 
 ### CLI Structure (`src/commands/`)
