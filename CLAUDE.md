@@ -268,12 +268,3 @@ The project version is defined in two locations that must be kept in sync:
 4. **Client method is close()** - Not `disconnect()` (will error)
 5. **Error type must be Error object** - Not string in test expectations
 6. **Bytecode mode unavailable** - ESM + top-level await incompatible
-
-## Phase Documentation
-
-Comprehensive docs in `docs/phase*.md`:
-- Phase 1-7: Complete implementation guide
-- `phase*-results.md`: Implementation outcomes and metrics
-- `technical-references.md`: Deep technical details
-
-All phases complete - project is production-ready at v0.1.0.
