@@ -15,28 +15,15 @@ export class ContextManager {
    * Prepare execution context
    */
   async prepareContext(workspaceDir: string = './workspace'): Promise<ExecutionContext> {
-    // Establish MCP server connections in advance
-    // This ensures connections are already established when code executes
+    // Validate that servers are configured (lazy initialization)
+    // Servers will connect on-demand when tools are first called
     const servers = await this.manager.listServers();
-    const connectedServers: string[] = [];
 
-    for (const serverName of servers) {
-      try {
-        await this.manager.getClient(serverName);
-        connectedServers.push(serverName);
-      } catch (error) {
-        output.warn(
-          `Warning: Failed to connect to ${serverName}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    if (connectedServers.length > 0) {
-      output.verbose(
-        `Connected to ${connectedServers.length} MCP server(s): ${connectedServers.join(', ')}`,
-      );
-    } else if (servers.length > 0) {
-      output.warn('Warning: No MCP servers could be connected');
+    if (servers.length === 0) {
+      output.warn('Warning: No MCP servers configured');
+    } else {
+      output.verbose(`Found ${servers.length} configured server(s): ${servers.join(', ')}`);
+      output.verbose('Servers will connect on first use (lazy initialization)');
     }
 
     // Set environment variables
