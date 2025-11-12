@@ -243,9 +243,17 @@ Pre-commit via Husky + lint-staged:
 - `MCPAC_CONFIG_PATH`: Override default config location (crucial for tests)
 - `MCPAC_WORKSPACE`: Workspace directory for code execution
 
+## Version Management
+
+The project version is defined in two locations that must be kept in sync:
+- `package.json`: NPM package version
+- `src/version.ts`: Runtime version constant (exported as `VERSION`)
+
+**Important**: Always update both files together to avoid version mismatches.
+
 ## Release Process
 
-1. Update `package.json` version
+1. Update version in `package.json` and `src/version.ts`
 2. Update `CHANGELOG.md`
 3. Commit: `git commit -m "chore: bump version to X.Y.Z"`
 4. Tag: `git tag vX.Y.Z`
