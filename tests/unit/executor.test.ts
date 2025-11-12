@@ -43,7 +43,7 @@ describe('CodeRunner', () => {
     contextMgr = new ContextManager(manager);
     runner = new CodeRunner();
     resultHandler = new ResultHandler();
-  });
+  }, 30000); // 30 second timeout for CI environments (npx package installation)
 
   afterAll(async () => {
     // Cleanup
@@ -55,7 +55,7 @@ describe('CodeRunner', () => {
     if (existsSync(TEST_WORKSPACE)) {
       await rm(TEST_WORKSPACE, { recursive: true });
     }
-  });
+  }, 10000); // 10 second timeout for cleanup
 
   test('should prepare execution context with environment variables', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);

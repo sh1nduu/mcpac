@@ -8,11 +8,7 @@ import type { MCPTool } from '../../src/mcp/types.js';
 const TEST_CONFIG_PATH = './tests/unit/test-codegen-config.json';
 const TEST_SERVER_NAME = 'test-filesystem';
 
-// Skip tests in CI environment due to MCP server connection instability
-const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-const describeOrSkip = isCI ? describe.skip : describe;
-
-describeOrSkip('CodeGenerator', () => {
+describe('CodeGenerator', () => {
   let manager: MCPManager;
   let generator: CodeGenerator;
   let tools: MCPTool[];
@@ -44,7 +40,7 @@ describeOrSkip('CodeGenerator', () => {
     tools = await client.listTools();
 
     generator = new CodeGenerator();
-  });
+  }, 30000); // 30 second timeout for CI environments (npx package installation)
 
   afterAll(async () => {
     // Cleanup
@@ -53,7 +49,7 @@ describeOrSkip('CodeGenerator', () => {
     if (existsSync(TEST_CONFIG_PATH)) {
       await rm(TEST_CONFIG_PATH);
     }
-  });
+  }, 10000); // 10 second timeout for cleanup
 
   test('should generate code for a tool', async () => {
     const readFileTool = tools.find((t) => t.name === 'read_file');

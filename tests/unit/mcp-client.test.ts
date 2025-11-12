@@ -35,7 +35,7 @@ describe('MCPClient', () => {
     // Initialize manager and client
     manager = MCPManager.getInstance(TEST_CONFIG_PATH);
     client = await manager.getClient(TEST_SERVER_NAME);
-  });
+  }, 30000); // 30 second timeout for CI environments (npx package installation)
 
   afterAll(async () => {
     // Cleanup
@@ -45,7 +45,7 @@ describe('MCPClient', () => {
     if (existsSync(TEST_CONFIG_PATH)) {
       await rm(TEST_CONFIG_PATH);
     }
-  });
+  }, 10000); // 10 second timeout for cleanup
 
   test('should connect to MCP server', () => {
     expect(client.isConnected()).toBe(true);
