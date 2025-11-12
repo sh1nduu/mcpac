@@ -234,6 +234,46 @@ mcpac tools list -s <server-name>
 mcpac tools describe <function_name>
 ```
 
+### Direct Tool Invocation
+
+Call MCP tools directly from CLI without writing code:
+
+```bash
+# Call tool with named flags
+mcpac tools call readFile --path example.txt
+
+# Call tool with JSON string
+mcpac tools call readFile --json '{"path":"example.txt"}'
+
+# Call tool with stdin
+echo '{"path":"example.txt"}' | mcpac tools call readFile --stdin
+
+# Output formats
+mcpac tools call readFile --path example.txt --output-format text  # Default
+mcpac tools call readFile --path example.txt --output-format json  # With metadata
+mcpac tools call readFile --path example.txt --output-format raw   # Raw MCP response
+
+# Skip validation
+mcpac tools call readFile --path example.txt --no-validate
+
+# Quiet mode
+mcpac tools call readFile --path example.txt -q
+
+# Verbose mode (show debug logs)
+mcpac tools call readFile --path example.txt -v
+```
+
+**Argument Input Methods** (priority order):
+1. `--stdin`: Read arguments from stdin as JSON
+2. `--json`: Provide arguments as JSON string
+3. Named flags: Use `--key value` or `--key=value` format
+
+**Exit Codes**:
+- `0`: Success
+- `1`: Argument error or validation failure
+- `2`: Tool execution error
+- `3`: Server connection error
+
 ### Code Execution
 
 ```bash

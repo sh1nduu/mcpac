@@ -23,6 +23,7 @@ MCPaC converts MCP servers into TypeScript libraries that you can execute as cod
 3️⃣  Explore Available Tools (Optional)
    $ mcpac tools list                        # See all functions
    $ mcpac tools describe listDirectory      # View function details
+   $ mcpac tools call readFile --path ./README.md  # Call tool directly
 
 4️⃣  Execute Code with MCP Tools
    $ mcpac execute -c "

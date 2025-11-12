@@ -27,8 +27,9 @@ Quick Start:
 Common Workflow:
   1. mcpac server add <name> --command <cmd> --args <args...>
   2. mcpac generate
-  3. mcpac tools list        # Discover available functions
-  4. mcpac execute -f <file>
+  3. mcpac tools list         # Discover available functions
+  4. mcpac tools call <name>  # Quick tool invocation (OR)
+  5. mcpac execute -f <file>  # Complex multi-tool scripts
 `,
   );
 

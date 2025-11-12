@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Direct Tool Invocation**: New `tools call` command for invoking MCP tools directly from CLI without writing code
+  - Multiple argument input methods with priority ordering: stdin > JSON string > named flags
+  - Support for both `--key value` and `--key=value` argument formats
+  - Automatic type conversion using JSON Schema hints
+  - Three output formats: text (default), json (with metadata), and raw (MCP response)
+  - JSON Schema validation with `--no-validate` flag to skip validation
+  - Proper exit codes: 0 (success), 1 (argument error), 2 (tool error), 3 (connection error)
+  - Automatic cleanup of MCP connections on exit
+
+### Dependencies
+- Added `ajv@8.12.0` for JSON Schema validation
+- Added `ajv-formats@3.0.1` for format validators (email, uri, etc.)
+
 ## [0.1.1] - 2025-11-12
 
 ### Fixed
