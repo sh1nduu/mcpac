@@ -46,6 +46,10 @@ bun run dev execute -f <file> -v                                 # Verbose mode
 bun run dev tools list                                           # List all available tools
 bun run dev tools list -s <name>                                 # List tools for specific server
 bun run dev tools describe <function_name>                       # Show detailed tool description
+bun run dev tools call <function_name> [arguments]               # Call a tool directly from CLI
+bun run dev tools call <function_name> --json '{...}'            # Call with JSON arguments
+bun run dev tools call <function_name> --stdin                   # Read arguments from stdin
+bun run dev tools call <function_name> --output-format json      # Output in JSON format
 
 # Information
 bun run dev info                                                 # Show current status
@@ -121,6 +125,167 @@ bun run dev server add remote-server --type http --url https://api.example.com/m
   }
 }
 ```
+
+## Direct Tool Invocation
+
+The `tools call` command allows you to invoke MCP tools directly from the CLI without writing TypeScript code. This is useful for quick tool calls, scripting, and testing.
+
+### Usage
+
+**Basic syntax:**
+```bash
+mcpac tools call <function_name> [arguments]
+```
+
+### Argument Input Methods
+
+#### 1. Named Flags (Simple Arguments)
+Best for tools with simple, flat argument structures:
+```bash
+# Read a file
+mcpac tools call readFile --path ./data.txt
+
+# Multiple arguments
+mcpac tools call searchFiles --pattern "*.ts" --recursive true --maxDepth 5
+```
+
+**Type conversion:**
+- Schema types are used for automatic conversion
+- `"true"`/`"false"` → boolean (when schema type is boolean)
+- Numeric strings → number (when schema type is number/integer)
+- Everything else → string
+
+#### 2. JSON String (Complex Arguments)
+Best for complex nested structures or arrays:
+```bash
+# Simple JSON
+mcpac tools call readFile --json '{"path":"./data.txt"}'
+
+# Complex nested structure
+mcpac tools call complexTool --json '{
+  "config": {
+    "nested": {"value": 123},
+    "array": ["item1", "item2"]
+  }
+}'
+```
+
+#### 3. stdin (File or Pipeline Input)
+Best for reading arguments from files or pipelines:
+```bash
+# From file
+cat args.json | mcpac tools call processData --stdin
+
+# From heredoc
+mcpac tools call createResource --stdin <<EOF
+{
+  "name": "my-resource",
+  "config": {"key": "value"}
+}
+EOF
+
+# Pipeline integration
+echo '{"query":"SELECT * FROM users"}' | mcpac tools call runQuery --stdin
+```
+
+**Priority order:** stdin > JSON string > named flags
+
+### Output Formats
+
+#### text (default)
+Extracts and displays text content only:
+```bash
+mcpac tools call readFile --path ./data.txt
+# Output: File contents here...
+```
+
+#### json
+Full structured output with metadata:
+```bash
+mcpac tools call readFile --path ./data.txt --output-format json
+# Output:
+# {
+#   "success": true,
+#   "server": "filesystem",
+#   "tool": "read_file",
+#   "content": [...]
+# }
+```
+
+#### raw
+Raw MCP response format:
+```bash
+mcpac tools call readFile --path ./data.txt --output-format raw
+# Output:
+# {
+#   "content": [...],
+#   "isError": false
+# }
+```
+
+### Additional Options
+
+```bash
+-s, --server <name>        # Specify server if function name is ambiguous
+--no-validate              # Skip JSON Schema validation
+-q, --quiet                # Suppress non-error output
+-v, --verbose              # Show detailed execution information
+```
+
+### Examples
+
+```bash
+# Simple file read
+mcpac tools call readFile --path ./README.md
+
+# With server specification (if multiple servers have same function)
+mcpac tools call getData --server api-server --id 123
+
+# Complex query with JSON
+mcpac tools call searchDatabase --json '{
+  "query": "users",
+  "filters": {"status": "active"},
+  "limit": 10
+}'
+
+# Pipeline integration for scripting
+cat user_ids.json | mcpac tools call batchProcess --stdin --quiet
+
+# Get structured output for parsing
+result=$(mcpac tools call getVersion --output-format json -q)
+version=$(echo $result | jq -r '.content[0].text')
+```
+
+### Error Handling
+
+**Exit codes:**
+- `0`: Success
+- `1`: Argument error (missing required, validation failed, function not found)
+- `2`: Tool execution error (MCP server returned error)
+- `3`: Server connection error
+
+**Error output:**
+```bash
+# Missing required argument
+$ mcpac tools call readFile
+Error: Invalid arguments for tool 'readFile':
+  - Missing required property: 'path'
+
+# Tool execution error
+$ mcpac tools call readFile --path ./nonexistent.txt
+Error: Tool execution failed [filesystem.read_file]
+File not found: ./nonexistent.txt
+```
+
+### Comparison: `tools call` vs `execute`
+
+| Feature | `tools call` | `execute` |
+|---------|-------------|-----------|
+| Use case | Single tool invocation | Complex multi-tool scripts |
+| Input | CLI arguments | TypeScript code |
+| Type safety | Runtime validation | Compile-time checking |
+| Code reuse | No | Yes (functions, loops, logic) |
+| Best for | Quick calls, scripting | Complex workflows |
 
 ## Architecture
 

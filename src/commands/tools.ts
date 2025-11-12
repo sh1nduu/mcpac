@@ -1,9 +1,13 @@
 import type { Command } from 'commander';
 import { ToolsReader } from '../tools/reader.js';
+import { createToolCallCommand } from './tool-call.js';
 
 export function toolsCommand(program: Command): void {
   const tools = program.command('tools');
   tools.description('Explore generated TypeScript tools');
+
+  // tools call - call a tool directly
+  tools.addCommand(createToolCallCommand());
 
   // tools list [--server <name>] [--output <dir>]
   tools
