@@ -28,11 +28,12 @@ MCPaC converts MCP servers into TypeScript libraries that you can execute as cod
 
 4️⃣  Execute Code with MCP Tools
    $ mcpac execute -c "
-     import type { McpRequires } from './servers/_types.js';
-     declare const runtime: McpRequires<['filesystem.listDirectory']>;
+     declare const runtime: MCPaC.McpRequires<['filesystem.listDirectory']>;
      const result = await runtime.filesystem.listDirectory({ path: '.' });
      console.log(result.content[0].text);
    " --grant filesystem.listDirectory
+
+   Note: MCPaC namespace provides type-safe access without explicit imports!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -53,24 +54,38 @@ Find more servers at: https://github.com/modelcontextprotocol/servers
 
 ## Understanding the Generated Code
 
-After running 'mcpac generate', you'll have:
-  • servers/_mcpac_runtime.ts - Runtime library for MCP communication
-  • servers/_types.ts - Type definitions and McpRequires helper
-  • servers/<server-name>/*.ts - Type-safe tool functions
-  • servers/index.ts - Main exports
+After running 'mcpac generate', you'll have a hierarchical structure:
 
-All generated functions return MCP tool call results with this structure:
+  servers/
+  ├── _mcpac_runtime.ts         # Runtime library for MCP communication
+  ├── _types.d.ts               # Lightweight root type definitions
+  ├── global.d.ts               # MCPaC ambient namespace (no import needed!)
+  └── <server-name>/
+      ├── index.d.ts            # Server-level type definitions
+      ├── <tool1>.d.ts          # Individual tool type definitions
+      └── <tool2>.d.ts
+
+Key Features:
+  • Hierarchical .d.ts structure reduces token consumption by 60-75%
+  • MCPaC namespace eliminates boilerplate imports
+  • Type-safe access to all MCP tools
+  • Capability-based permission system
+
+Example usage (recommended - MCPaC namespace):
+  declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+
+  const result = await runtime.filesystem.readFile({ path: './data.txt' });
+  const text = result.content.find(c => c.type === 'text')?.text;
+
+Alternative (explicit import):
+  import type { McpRequires } from './servers/_types.js';
+  declare const runtime: McpRequires<['filesystem.readFile']>;
+
+All tool calls return this structure:
   {
     content: Array<{type: "text", text: string} | ...>,
     isError: boolean
   }
-
-Example usage (with required permission declarations):
-  import type { McpRequires } from './servers/_types.js';
-  declare const runtime: McpRequires<['filesystem.readFile']>;
-
-  const result = await runtime.filesystem.readFile({ path: './data.txt' });
-  const text = result.content.find(c => c.type === 'text')?.text;
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

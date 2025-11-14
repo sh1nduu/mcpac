@@ -10,10 +10,8 @@ export const examplesCommand = new Command('examples')
 
 ## Example 1: List Files in Directory
 
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.listDirectory']>;
+// Recommended: MCPaC namespace (no import needed)
+declare const runtime: MCPaC.McpRequires<['filesystem.listDirectory']>;
 
 const result = await runtime.filesystem.listDirectory({ path: '.' });
 const text = result.content.find(c => c.type === 'text')?.text;
@@ -25,10 +23,7 @@ console.log(text);
 
 ## Example 2: Read File Content
 
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.readFile']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
 
 const result = await runtime.filesystem.readFile({ path: './data.txt' });
 const text = result.content.find(c => c.type === 'text')?.text;
@@ -45,10 +40,7 @@ if (text) {
 
 ## Example 3: Write to File
 
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.writeFile']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.writeFile']>;
 
 const result = await runtime.filesystem.writeFile({
   path: './output.txt',
@@ -63,10 +55,8 @@ console.log('File written:', result.isError ? 'Failed' : 'Success');
 
 ## Example 4: Multiple Operations
 
-import type { McpRequires } from './servers/_types.js';
-
 // Declare required permissions (multiple)
-declare const runtime: McpRequires<[
+declare const runtime: MCPaC.McpRequires<[
   'filesystem.createDirectory',
   'filesystem.writeFile',
   'filesystem.listDirectory'
@@ -91,10 +81,7 @@ console.log(list.content.find(c => c.type === 'text')?.text);
 
 ## Example 5: Working with MCP Response Structure
 
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.readFile']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
 
 const result = await runtime.filesystem.readFile({ path: './data.json' });
 
@@ -117,10 +104,7 @@ for (const block of result.content) {
 
 ## Example 6: Error Handling
 
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.readFile']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
 
 try {
   const result = await runtime.filesystem.readFile({ path: './nonexistent.txt' });
@@ -139,23 +123,38 @@ try {
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## Running Examples
+## Alternative: Explicit Import Syntax
 
-Execute inline code:
-  $ mcpac execute -c "<paste example code>"
+If you prefer explicit imports over the MCPaC namespace:
 
-Execute from file:
-  $ echo "<paste example code>" > script.ts
-  $ mcpac execute -f script.ts
+import type { McpRequires } from './servers/_types.js';
+declare const runtime: McpRequires<['filesystem.readFile']>;
 
-Execute from stdin:
-  $ cat script.ts | mcpac execute --stdin
+// Both syntaxes work identically - choose based on preference
+// MCPaC.McpRequires - No import needed, concise
+// McpRequires       - Explicit import, traditional
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 Tip: All examples assume you have the 'filesystem' server configured
-    Run 'mcpac info' to see your configured servers
-    Run 'mcpac tools list -s filesystem' to see filesystem tools
-    Run 'mcpac tools list' to see all available tools
+## Running Examples
+
+Execute inline code:
+  $ mcpac execute -c "<paste example code>" --grant <permissions>
+
+Execute from file:
+  $ echo "<paste example code>" > script.ts
+  $ mcpac execute -f script.ts --grant <permissions>
+
+Execute from stdin:
+  $ cat script.ts | mcpac execute --stdin --grant <permissions>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 Tips:
+  • All examples assume you have the 'filesystem' server configured
+  • Run 'mcpac info' to see your configured servers
+  • Run 'mcpac tools list -s filesystem' to see filesystem tools
+  • Run 'mcpac tools list' to see all available tools
+  • Use MCPaC namespace for cleaner code (recommended)
 `);
   });
