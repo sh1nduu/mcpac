@@ -34,6 +34,10 @@ export interface InjectionOptions {
  * RuntimeInjector injects capability runtime initialization into user code.
  * Prepends import and initialization statements before user code.
  *
+ * User code MUST contain:
+ *   import type { McpRequires } from './servers/_types.js';
+ *   declare const runtime: McpRequires<['perm1', 'perm2']>;
+ *
  * @example
  * ```ts
  * const injector = new RuntimeInjector();
@@ -44,11 +48,29 @@ export interface InjectionOptions {
  */
 export class RuntimeInjector {
   /**
+   * Check if user code has required declarations
+   */
+  private hasRequiredDeclarations(code: string): {
+    hasMcpRequiresImport: boolean;
+    hasRuntimeDeclaration: boolean;
+  } {
+    const hasMcpRequiresImport =
+      /import\s+type\s+\{[^}]*McpRequires[^}]*\}\s+from\s+['"][^'"]*_types/.test(code);
+    const hasRuntimeDeclaration = /declare\s+const\s+runtime\s*:\s*McpRequires</.test(code);
+
+    return {
+      hasMcpRequiresImport,
+      hasRuntimeDeclaration,
+    };
+  }
+
+  /**
    * Inject runtime initialization code into user code
    *
    * @param code - Original user code
    * @param options - Injection options
    * @returns Modified code with runtime initialization
+   * @throws Error if required declarations are missing
    */
   inject(code: string, options: InjectionOptions): string {
     const {
@@ -58,11 +80,29 @@ export class RuntimeInjector {
       runtimeVariableName = 'runtime',
     } = options;
 
-    // Generate runtime setup code
+    const { hasMcpRequiresImport, hasRuntimeDeclaration } = this.hasRequiredDeclarations(code);
+
+    // Check for required declarations
+    if (!hasMcpRequiresImport || !hasRuntimeDeclaration) {
+      const missing: string[] = [];
+      if (!hasMcpRequiresImport) {
+        missing.push(`  import type { McpRequires } from '${typesModulePath}';`);
+      }
+      if (!hasRuntimeDeclaration) {
+        missing.push(
+          `  declare const ${runtimeVariableName}: McpRequires<['permission1', 'permission2']>;`,
+        );
+      }
+
+      throw new Error(
+        `Missing required permission declarations. Add the following to your code:\n\n${missing.join('\n')}\n`,
+      );
+    }
+
+    // Generate runtime setup code (only createRuntime import and initialization)
     const setupCode = this.generateSetupCode(
       grantedPermissions,
       runtimeModulePath,
-      typesModulePath,
       runtimeVariableName,
     );
 
@@ -71,13 +111,12 @@ export class RuntimeInjector {
   }
 
   /**
-   * Generate runtime setup code
+   * Generate runtime setup code (without import/declare, only implementation)
    * @private
    */
   private generateSetupCode(
     permissions: string[],
     runtimeModulePath: string,
-    typesModulePath: string,
     variableName: string,
   ): string {
     const lines: string[] = [];
@@ -86,10 +125,6 @@ export class RuntimeInjector {
     lines.push('// ============================================================================');
     lines.push('// MCPaC Runtime Initialization (auto-injected)');
     lines.push('// ============================================================================');
-    lines.push('');
-
-    // Import types (for type checking only, not used at runtime)
-    lines.push(`import type { McpRequires } from '${typesModulePath}';`);
     lines.push('');
 
     // Import createRuntime function

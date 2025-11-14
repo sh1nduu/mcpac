@@ -29,30 +29,40 @@ export function executeCommand(program: Command): void {
       'after',
       `
 Examples:
-  $ mcpac execute -f script.ts --grant filesystem.read_file    # Execute with permissions
-  $ mcpac execute -f script.ts --grant filesystem.read_file,filesystem.write_file
-  $ mcpac execute -c "import {filesystem} from './servers'; ..."  # Execute inline
+  $ mcpac execute -f script.ts --grant filesystem.readFile    # Execute with permissions
+  $ mcpac execute -f script.ts --grant filesystem.readFile,filesystem.writeFile
   $ cat script.ts | mcpac execute --stdin     # Execute from stdin
 
 Prerequisites:
   • Code must be generated first
     Run 'mcpac generate' to generate code from configured servers
-  • Import generated code from './servers/' directory
-    Example: import { filesystem } from './servers/index.js';
   • Discover available functions
     Run 'mcpac tools list' to see all available tools
 
-Code Structure:
-  Your code must:
-    • Import from './servers/index.js' or './servers/<server-name>/index.js'
+Code Structure (REQUIRED):
+  Your code MUST include these two declarations:
+    1. Import the McpRequires type:
+       import type { McpRequires } from './servers/_types.js';
+
+    2. Declare the runtime with required permissions:
+       declare const runtime: McpRequires<['server.tool1', 'server.tool2']>;
+
+  Then use the runtime object to call MCP tools:
     • Use top-level await for async operations
     • Handle MCP response structure (result.content is an array)
 
 Example Code:
-  import { filesystem } from './servers/index.js';
-  const result = await filesystem.listDirectory({ path: '.' });
+  import type { McpRequires } from './servers/_types.js';
+
+  // Declare required permissions
+  declare const runtime: McpRequires<['filesystem.listDirectory']>;
+
+  const result = await runtime.filesystem.listDirectory({ path: '.' });
   const text = result.content.find(c => c.type === 'text')?.text;
   console.log(text);
+
+  # Run with:
+  $ mcpac execute -f script.ts --grant filesystem.listDirectory
 `,
     )
     .action(async (options) => {

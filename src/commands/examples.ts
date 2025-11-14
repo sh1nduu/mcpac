@@ -10,19 +10,27 @@ export const examplesCommand = new Command('examples')
 
 ## Example 1: List Files in Directory
 
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
 
-const result = await filesystem.listDirectory({ path: '.' });
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.listDirectory']>;
+
+const result = await runtime.filesystem.listDirectory({ path: '.' });
 const text = result.content.find(c => c.type === 'text')?.text;
 console.log(text);
+
+// Run with: mcpac execute -f script.ts --grant filesystem.listDirectory
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## Example 2: Read File Content
 
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
 
-const result = await filesystem.readFile({ path: './data.txt' });
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.readFile']>;
+
+const result = await runtime.filesystem.readFile({ path: './data.txt' });
 const text = result.content.find(c => c.type === 'text')?.text;
 
 if (text) {
@@ -31,45 +39,64 @@ if (text) {
   console.error('No text content found');
 }
 
+// Run with: mcpac execute -f script.ts --grant filesystem.readFile
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## Example 3: Write to File
 
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
 
-const result = await filesystem.writeFile({
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.writeFile']>;
+
+const result = await runtime.filesystem.writeFile({
   path: './output.txt',
   content: 'Hello from MCPaC!'
 });
 
 console.log('File written:', result.isError ? 'Failed' : 'Success');
 
+// Run with: mcpac execute -f script.ts --grant filesystem.writeFile
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## Example 4: Multiple Operations
 
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
+
+// Declare required permissions (multiple)
+declare const runtime: McpRequires<[
+  'filesystem.createDirectory',
+  'filesystem.writeFile',
+  'filesystem.listDirectory'
+]>;
 
 // Create directory
-await filesystem.createDirectory({ path: './output' });
+await runtime.filesystem.createDirectory({ path: './output' });
 
 // Write file
-await filesystem.writeFile({
+await runtime.filesystem.writeFile({
   path: './output/result.txt',
   content: 'Processing complete'
 });
 
 // List directory contents
-const list = await filesystem.listDirectory({ path: './output' });
+const list = await runtime.filesystem.listDirectory({ path: './output' });
 console.log(list.content.find(c => c.type === 'text')?.text);
+
+// Run with: mcpac execute -f script.ts --grant filesystem.createDirectory,filesystem.writeFile,filesystem.listDirectory
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## Example 5: Working with MCP Response Structure
 
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
 
-const result = await filesystem.readFile({ path: './data.json' });
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.readFile']>;
+
+const result = await runtime.filesystem.readFile({ path: './data.json' });
 
 // result.content is an array of ContentBlock
 // ContentBlock can be: text, image, audio, resource_link, or resource
@@ -84,14 +111,19 @@ for (const block of result.content) {
   }
 }
 
+// Run with: mcpac execute -f script.ts --grant filesystem.readFile
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## Example 6: Error Handling
 
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
+
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.readFile']>;
 
 try {
-  const result = await filesystem.readFile({ path: './nonexistent.txt' });
+  const result = await runtime.filesystem.readFile({ path: './nonexistent.txt' });
 
   if (result.isError) {
     console.error('Tool returned error:', result.content);
@@ -102,6 +134,8 @@ try {
 } catch (error) {
   console.error('Exception occurred:', error.message);
 }
+
+// Run with: mcpac execute -f script.ts --grant filesystem.readFile
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
