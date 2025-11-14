@@ -130,7 +130,7 @@ export class CodeGenerator {
   }
 
   /**
-   * JSON SchemaからTypeScript型定義を生成
+   * Generate TypeScript type definition from JSON Schema
    */
   private async generateInputType(schema: unknown, typeName: string): Promise<string> {
     try {
@@ -148,13 +148,13 @@ export class CodeGenerator {
       return typeCode;
     } catch (_error) {
       console.warn(`Warning: Failed to generate type for ${typeName}, using fallback`);
-      // フォールバック: Record<string, unknown>
+      // Fallback: Record<string, unknown>
       return `export interface ${typeName} {\n  [key: string]: unknown;\n}\n`;
     }
   }
 
   /**
-   * 関数コードを生成
+   * Generate function code
    */
   private generateFunction(
     functionName: string,
@@ -175,8 +175,8 @@ export class CodeGenerator {
   }
 
   /**
-   * ツール名からPascalCase型名を生成
-   * 例: read_file → ReadFileInput
+   * Convert tool name to PascalCase type name
+   * Example: read_file → ReadFileInput
    */
   private toTypeName(toolName: string, suffix: string): string {
     const pascal = toolName
@@ -187,8 +187,8 @@ export class CodeGenerator {
   }
 
   /**
-   * ツール名からcamelCase関数名を生成
-   * 例: read_file → readFile
+   * Convert tool name to camelCase function name
+   * Example: read_file → readFile
    */
   toCamelCase(toolName: string): string {
     const parts = toolName.split('_');
@@ -202,7 +202,7 @@ export class CodeGenerator {
   }
 
   /**
-   * サーバーのindex.tsを生成
+   * Generate server's index.ts
    */
   generateServerIndex(toolNames: string[]): string {
     const exports = toolNames.map((name) => `export * from './${name}.js';`).join('\n');

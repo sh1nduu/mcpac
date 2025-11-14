@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-15
+
+### Added
+- **Hierarchical .d.ts Type System**: Individual tool type definitions for efficient token usage
+  - Tool types split into separate `<server>/<tool>.d.ts` files
+  - Server-level type aggregation in `<server>/index.d.ts`
+  - Lightweight root type aggregator in `_types.d.ts`
+  - Reduces context size for large projects with many MCP tools
+- **MCPaC Ambient Namespace**: Zero-import type declarations via `global.d.ts`
+  - Use `MCPaC.McpRequires<[...]>` without explicit imports
+  - Eliminates boilerplate from user code (2 lines → 1 line)
+  - Alternative explicit import syntax still supported for preference
+- **Capability-Based Permission System**: Secure permission model with host-side enforcement
+  - Mandatory `--grant` flag for execute command
+  - Required permission declarations in user code via `McpRequires<[...]>` type parameter
+  - Permission validation before execution (required vs granted)
+  - Host-side permission checks in IPC server (untrusted user code cannot bypass)
+  - Permission format: `server.toolName` (camelCase), e.g., `filesystem.readFile`
+- **Bun.macro Template Loading**: Runtime template embedded at bundle-time
+  - Enables single executable distribution without filesystem access
+  - Similar to Rust's `include_str!()` macro pattern
+
+### Changed
+- **BREAKING: Permission declarations now mandatory**: All user code must declare required permissions
+  ```typescript
+  // Before (0.2.x): No permission declaration needed
+  const result = await runtime.filesystem.readFile({ path: './data.txt' });
+
+  // After (0.3.0): Must declare permissions
+  declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+  const result = await runtime.filesystem.readFile({ path: './data.txt' });
+  ```
+- **BREAKING: Generated file structure changed**: From implementation `.ts` to type-only `.d.ts` hierarchy
+  ```
+  Before (0.2.x):                After (0.3.0):
+  servers/                       servers/
+  ├── _mcpac_runtime.ts          ├── _mcpac_runtime.ts
+  ├── _types.ts                  ├── _types.d.ts
+  └── <server>/                  ├── global.d.ts
+      ├── index.ts               └── <server>/
+      ├── <tool1>.ts                 ├── index.d.ts
+      └── <tool2>.ts                 ├── <tool1>.d.ts
+                                     └── <tool2>.d.ts
+  ```
+- **Security: Permission enforcement moved to host side**: IPC server validates permissions (not user code)
+- **Code generation: Removed root `servers/index.ts`**: No longer generated (unused file)
+- **Tools commands updated for .d.ts structure**: `tools list`, `tools describe`, `tools call` work with new hierarchy
+
+### Fixed
+- Permission format conversion: camelCase (user) ↔ snake_case (MCP) ↔ kebab-case (config)
+- Server name mapping for tools with hyphenated server names (e.g., `test-fs` → `testFs`)
+- Workspace directory resolution for inline code execution
+- Type checker now includes `global.d.ts` for MCPaC namespace resolution
+- Runtime injector recognizes MCPaC namespace syntax
+
+### Documentation
+- Updated README.md with MCPaC namespace examples and hierarchical structure
+- Updated CLAUDE.md architecture documentation with new type system
+- Updated `getting-started`, `examples`, and `info` commands to show new patterns
+- Removed percentage claims about token reduction (specific numbers unclear)
+
 ## [0.2.1] - 2025-11-13
 
 ### Fixed
