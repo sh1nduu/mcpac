@@ -15,6 +15,10 @@ export function executeCommand(program: Command): void {
     .option('-c, --code <code>', 'Execute code string')
     .option('--stdin', 'Read code from stdin')
     .option('-w, --workspace <dir>', 'Workspace directory', './workspace')
+    .option(
+      '--grant <permissions>',
+      'Grant permissions (comma-separated, e.g., "filesystem.read_file,filesystem.write_file")',
+    )
     .option('--dry-run', 'Validate without executing')
     .option('--timeout <ms>', 'Execution timeout in milliseconds', '120000')
     .option('--typecheck', 'Type-check code before execution (default: true)')
@@ -25,7 +29,8 @@ export function executeCommand(program: Command): void {
       'after',
       `
 Examples:
-  $ mcpac execute -f script.ts                # Execute from file
+  $ mcpac execute -f script.ts --grant filesystem.read_file    # Execute with permissions
+  $ mcpac execute -f script.ts --grant filesystem.read_file,filesystem.write_file
   $ mcpac execute -c "import {filesystem} from './servers'; ..."  # Execute inline
   $ cat script.ts | mcpac execute --stdin     # Execute from stdin
 
@@ -79,6 +84,20 @@ Example Code:
         const resultHandler = new ResultHandler();
         const typeChecker = new TypeChecker();
 
+        // Parse granted permissions
+        const grantedPermissions: string[] = [];
+        if (options.grant) {
+          const perms = options.grant
+            .split(',')
+            .map((p: string) => p.trim())
+            .filter((p: string) => p.length > 0);
+          grantedPermissions.push(...perms);
+
+          if (grantedPermissions.length > 0) {
+            output.verbose(`Granted permissions: ${grantedPermissions.join(', ')}`);
+          }
+        }
+
         // Prepare context
         output.info('Preparing execution context...');
         const context = await contextMgr.prepareContext(options.workspace);
@@ -127,6 +146,7 @@ Example Code:
           result = await ipcExecutor.executeFile(options.file, {
             mcpManager: manager,
             context,
+            grantedPermissions,
             timeout,
             dryRun: options.dryRun,
           });
@@ -135,6 +155,7 @@ Example Code:
           result = await ipcExecutor.executeCode(options.code, {
             mcpManager: manager,
             context,
+            grantedPermissions,
             timeout,
             dryRun: options.dryRun,
           });
@@ -143,6 +164,7 @@ Example Code:
           result = await ipcExecutor.executeCode(stdinCode, {
             mcpManager: manager,
             context,
+            grantedPermissions,
             timeout,
             dryRun: options.dryRun,
           });
