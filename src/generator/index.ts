@@ -33,14 +33,12 @@ export class Generator {
       return [];
     }
 
-    // Generate code for each tool
-    const toolNames: string[] = [];
+    // Generate .d.ts type definitions for each tool
     const successfulTools: ToolDefinition[] = [];
     for (const tool of tools) {
       try {
-        const code = await this.codegen.generateToolCode(tool);
-        await this.fs.writeToolFile(serverName, tool.toolName, code);
-        toolNames.push(tool.toolName);
+        const typeCode = await this.codegen.generateToolTypeDefinition(tool);
+        await this.fs.writeToolTypeDefinition(serverName, tool.toolName, typeCode);
         successfulTools.push(tool);
         output.verbose(`  ✓ ${tool.toolName}`);
       } catch (error) {
@@ -50,11 +48,11 @@ export class Generator {
       }
     }
 
-    // Generate index.ts
-    if (toolNames.length > 0) {
-      const indexCode = this.codegen.generateServerIndex(toolNames);
-      await this.fs.writeServerIndex(serverName, indexCode);
-      output.info(`✓ Generated ${toolNames.length} tools for ${serverName}`);
+    // Generate server index.d.ts (type aggregation)
+    if (successfulTools.length > 0) {
+      const indexTypeCode = this.codegen.generateServerIndexTypes(serverName, successfulTools);
+      await this.fs.writeServerIndexTypes(serverName, indexTypeCode);
+      output.info(`✓ Generated ${successfulTools.length} tools for ${serverName}`);
     }
 
     return successfulTools;
@@ -103,15 +101,17 @@ export class Generator {
       await this.fs.writeRuntimeShim(allTools);
       output.info('✓ Generated runtime\n');
 
-      // Generate type definitions file (_types.ts) for capability system
+      // Generate type definitions file (_types.d.ts) for capability system
       output.info('Generating type definitions for capability system...');
       const typeDefinitionsCode = this.codegen.generateTypeDefinitions(allTools);
       await this.fs.writeTypeDefinitions(typeDefinitionsCode);
       output.info('✓ Generated type definitions\n');
 
-      // Generate root index.ts
-      const rootIndexCode = this.codegen.generateRootIndex(successfulServers);
-      await this.fs.writeRootIndex(rootIndexCode);
+      // Generate global.d.ts with MCPaC ambient namespace
+      output.info('Generating global types (MCPaC namespace)...');
+      const globalTypesCode = this.codegen.generateGlobalTypes();
+      await this.fs.writeGlobalTypes(globalTypesCode);
+      output.info('✓ Generated global types\n');
     } else {
       output.error('✗ No servers were successfully generated');
       throw new Error('No servers were successfully generated');

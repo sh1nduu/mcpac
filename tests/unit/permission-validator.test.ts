@@ -59,6 +59,79 @@ describe('PermissionValidator', () => {
       expect(results[0]?.isValid).toBe(true);
       expect(results[0]?.permissions).toEqual(['database.query']);
     });
+
+    test('should validate import from ./servers/_types.d.ts', () => {
+      const code = `
+        import type { McpRequires } from './servers/_types.d.ts';
+
+        function processFiles(rt: McpRequires<['filesystem.readFile']>) {
+          return rt.filesystem.readFile({ path: '/data.txt' });
+        }
+      `;
+
+      const validator = new PermissionValidator(code);
+      const results = validator.validateFunctions();
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.isValid).toBe(true);
+      expect(results[0]?.permissions).toEqual(['filesystem.readFile']);
+      expect(results[0]?.reason).toContain('legitimate library');
+    });
+  });
+
+  describe('MCPaC ambient namespace (no import needed)', () => {
+    test('should validate MCPaC.McpRequires without import', () => {
+      const code = `
+        declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+      `;
+
+      const validator = new PermissionValidator(code);
+      const results = validator.validateFunctions();
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.isValid).toBe(true);
+      expect(results[0]?.permissions).toEqual(['filesystem.readFile']);
+      expect(results[0]?.reason).toContain('trusted MCPaC namespace');
+    });
+
+    test('should extract multiple permissions from MCPaC namespace', () => {
+      const code = `
+        declare const runtime: MCPaC.McpRequires<['filesystem.readFile', 'github.createIssue']>;
+      `;
+
+      const validator = new PermissionValidator(code);
+      const results = validator.validateFunctions();
+
+      expect(results[0]?.isValid).toBe(true);
+      expect(results[0]?.permissions).toEqual(['filesystem.readFile', 'github.createIssue']);
+    });
+
+    test('should validate MCPaC.McpRequires in function parameters', () => {
+      const code = `
+        function processFiles(rt: MCPaC.McpRequires<['filesystem.readFile']>) {
+          return rt.filesystem.readFile({ path: '/data.txt' });
+        }
+      `;
+
+      const validator = new PermissionValidator(code);
+      const results = validator.validateFunctions();
+
+      expect(results).toHaveLength(1);
+      expect(results[0]?.isValid).toBe(true);
+      expect(results[0]?.permissions).toEqual(['filesystem.readFile']);
+    });
+
+    test('should validate MCPaC.McpRequires in const variable', () => {
+      const code = `
+        const rt: MCPaC.McpRequires<['filesystem.readFile', 'filesystem.writeFile']> = createRuntime(['filesystem.readFile', 'filesystem.writeFile']);
+      `;
+
+      const validator = new PermissionValidator(code);
+      const results = validator.validateFunctions();
+
+      expect(results[0]?.isValid).toBe(true);
+      expect(results[0]?.permissions).toEqual(['filesystem.readFile', 'filesystem.writeFile']);
+    });
   });
 
   describe('Multiple permissions extraction', () => {

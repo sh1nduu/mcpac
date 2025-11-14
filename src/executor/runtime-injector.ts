@@ -64,12 +64,17 @@ export class RuntimeInjector {
       `import\\s+type\\s+\\{[^}]*McpRequires[^}]*\\}\\s+from\\s+['"]${escapedPath}`,
     ).test(code);
 
-    const hasRuntimeDeclaration = new RegExp(
+    // Check for both explicit import syntax and MCPaC namespace syntax
+    const hasExplicitMcpRequires = new RegExp(
       `declare\\s+const\\s+${runtimeVariableName}\\s*:\\s*McpRequires<`,
     ).test(code);
+    const hasMCPaCNamespace = new RegExp(
+      `declare\\s+const\\s+${runtimeVariableName}\\s*:\\s*MCPaC\\.McpRequires<`,
+    ).test(code);
+    const hasRuntimeDeclaration = hasExplicitMcpRequires || hasMCPaCNamespace;
 
     return {
-      hasMcpRequiresImport,
+      hasMcpRequiresImport: hasMcpRequiresImport || hasMCPaCNamespace, // MCPaC namespace doesn't need import
       hasRuntimeDeclaration,
     };
   }
@@ -99,6 +104,18 @@ export class RuntimeInjector {
     // Check for required declarations
     if (!hasMcpRequiresImport || !hasRuntimeDeclaration) {
       const missing: string[] = [];
+
+      // Recommend MCPaC namespace (simpler, no import needed)
+      missing.push('  // Recommended: Use MCPaC namespace (no import needed)');
+      if (!hasRuntimeDeclaration) {
+        missing.push(
+          `  declare const ${runtimeVariableName}: MCPaC.McpRequires<['permission1', 'permission2']>;`,
+        );
+      }
+
+      // Alternative: explicit import
+      missing.push('');
+      missing.push('  // Alternative: Explicit import');
       if (!hasMcpRequiresImport) {
         missing.push(`  import type { McpRequires } from '${typesModulePath}';`);
       }
@@ -109,7 +126,7 @@ export class RuntimeInjector {
       }
 
       throw new Error(
-        `Missing required permission declarations. Add the following to your code:\n\n${missing.join('\n')}\n`,
+        `Missing required permission declarations. Add one of the following to your code:\n\n${missing.join('\n')}\n`,
       );
     }
 

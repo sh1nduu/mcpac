@@ -17,7 +17,7 @@ export const infoCommand = new Command('info')
       const serverNames = Object.keys(config);
 
       const outputDir = './servers';
-      const workspaceDir = process.env.MCPAC_WORKSPACE || './workspace';
+      const workspaceDir = process.env.MCPAC_WORKSPACE || '.';
 
       // Check generated code status
       const hasRuntime = existsSync(join(outputDir, '_mcpac_runtime.ts'));

@@ -105,7 +105,9 @@ export class TypeChecker {
       return originalGetSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile);
     };
 
-    const program = ts.createProgram([resolve(filePath)], compilerOptions, host);
+    // Include global.d.ts for MCPaC ambient namespace
+    const globalDtsPath = resolve(serversPath, 'global.d.ts');
+    const program = ts.createProgram([resolve(filePath), globalDtsPath], compilerOptions, host);
 
     // Get diagnostics
     const diagnostics = ts.getPreEmitDiagnostics(program);

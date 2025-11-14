@@ -51,8 +51,14 @@ const DEFAULT_VALID_SOURCES = [
   './servers/_mcpac_runtime.js',
   './servers/_types',
   './servers/_types.js',
+  './servers/_types.d.ts',
   'mcpac',
 ];
+
+/**
+ * Trusted ambient namespaces that can be used without imports
+ */
+const TRUSTED_NAMESPACES = new Set(['MCPaC']);
 
 /**
  * PermissionValidator validates McpRequires type parameters in user code.
@@ -199,6 +205,20 @@ export class PermissionValidator {
   }
 
   /**
+   * Check if a type is namespace-qualified from a trusted namespace
+   * @param typeName - Name of the type to check (e.g., 'MCPaC.McpRequires')
+   * @returns True if from a trusted namespace
+   */
+  private isFromTrustedNamespace(typeName: string): boolean {
+    const parts = typeName.split('.');
+    if (parts.length === 2) {
+      const namespaceName = parts[0];
+      return namespaceName ? TRUSTED_NAMESPACES.has(namespaceName) : false;
+    }
+    return false;
+  }
+
+  /**
    * Check if a type is based on PickNamespacedRuntime (recursively)
    * @param typeName - Name of the type to check
    * @param importedTypes - Map of imported types to sources
@@ -335,7 +355,10 @@ export class PermissionValidator {
   ): ValidationResult | null {
     const typeName = typeNode.typeName.getText(this.sourceFile);
     const isRequiresName =
-      typeName === 'McpRequires' || typeName === 'Requires' || typeName.endsWith('Requires');
+      typeName === 'McpRequires' ||
+      typeName === 'Requires' ||
+      typeName.endsWith('Requires') ||
+      typeName.endsWith('.McpRequires');
 
     if (!isRequiresName) {
       return null;
@@ -344,9 +367,10 @@ export class PermissionValidator {
     // Extract permissions from type arguments
     const permissions = this.extractPermissionsFromTypeNode(typeNode);
 
-    // Three-check validation logic
+    // Four-check validation logic
     const isLocal = this.isLocallyDefined(typeName);
     const fromValidLib = this.isFromValidLibrary(typeName, importedTypes);
+    const fromTrustedNamespace = this.isFromTrustedNamespace(typeName);
     const isPickRuntimeBased = this.isPickRuntimeBased(typeName, importedTypes);
 
     let isValid = false;
@@ -356,10 +380,14 @@ export class PermissionValidator {
       // Valid: Imported from whitelisted library
       isValid = true;
       reason = `Type "${typeName}" is imported from a legitimate library`;
+    } else if (fromTrustedNamespace) {
+      // Valid: Using MCPaC ambient namespace (no import needed)
+      isValid = true;
+      reason = `Type "${typeName}" is from trusted MCPaC namespace`;
     } else if (isLocal && isPickRuntimeBased) {
       // Warning: Local but based on PickRuntime (should import instead)
       isValid = true;
-      reason = `⚠️  Type "${typeName}" is locally defined but uses PickNamespacedRuntime (recommended: import from library)`;
+      reason = `⚠️  Type "${typeName}" is locally defined but uses PickNamespacedRuntime (recommended: use MCPaC namespace)`;
     } else if (isLocal) {
       // Invalid: Local definition without PickRuntime base (forgery risk)
       isValid = false;

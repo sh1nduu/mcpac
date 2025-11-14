@@ -166,4 +166,126 @@ describe('CodeGenerator', () => {
     expect(runtime).toContain('export interface MCPToolResult');
     expect(runtime).toContain('content: ContentBlock[]');
   });
+
+  describe('Hierarchical .d.ts generation', () => {
+    test('should generate tool type definition (.d.ts)', async () => {
+      const readFileTool = tools.find((t) => t.name === 'read_file');
+      expect(readFileTool).toBeDefined();
+
+      if (!readFileTool) return;
+
+      const toolDef = {
+        serverName: TEST_SERVER_NAME,
+        toolName: readFileTool.name,
+        description: readFileTool.description,
+        inputSchema: readFileTool.inputSchema,
+      };
+
+      const typeCode = await generator.generateToolTypeDefinition(toolDef);
+
+      // Check it's a .d.ts file (no implementation)
+      expect(typeCode).toContain('// Auto-generated - do not edit');
+      expect(typeCode).toContain('export interface ReadFileInput');
+      expect(typeCode).toContain('export interface ReadFileOutput');
+      expect(typeCode).toContain('export interface ReadFileMethod');
+
+      // Should NOT contain implementation code
+      expect(typeCode).not.toContain('export async function');
+      expect(typeCode).not.toContain('callMCPTool');
+    });
+
+    test('should generate server index types (index.d.ts)', async () => {
+      const readFileTool = tools.find((t) => t.name === 'read_file');
+      const writeFileTool = tools.find((t) => t.name === 'write_file');
+
+      expect(readFileTool).toBeDefined();
+      expect(writeFileTool).toBeDefined();
+
+      if (!readFileTool || !writeFileTool) return;
+
+      const toolDefs = [
+        {
+          serverName: TEST_SERVER_NAME,
+          toolName: readFileTool.name,
+          description: readFileTool.description,
+          inputSchema: readFileTool.inputSchema,
+        },
+        {
+          serverName: TEST_SERVER_NAME,
+          toolName: writeFileTool.name,
+          description: writeFileTool.description,
+          inputSchema: writeFileTool.inputSchema,
+        },
+      ];
+
+      const indexTypeCode = generator.generateServerIndexTypes(TEST_SERVER_NAME, toolDefs);
+
+      // Check type exports
+      expect(indexTypeCode).toContain(
+        'export type { ReadFileInput, ReadFileOutput, ReadFileMethod }',
+      );
+      expect(indexTypeCode).toContain(
+        'export type { WriteFileInput, WriteFileOutput, WriteFileMethod }',
+      );
+
+      // Check server interface
+      expect(indexTypeCode).toContain('export interface TestFilesystemServer');
+      expect(indexTypeCode).toContain('readFile:');
+      expect(indexTypeCode).toContain('writeFile:');
+    });
+
+    test('should generate global types with MCPaC namespace', () => {
+      const globalTypes = generator.generateGlobalTypes();
+
+      // Check ambient namespace declaration
+      expect(globalTypes).toContain('declare namespace MCPaC');
+      expect(globalTypes).toContain('export type McpRequires<T extends readonly string[]>');
+      expect(globalTypes).toContain('export type PermissionId');
+
+      // Check imports from _types.d.ts
+      expect(globalTypes).toContain("import('./_types.d.ts').McpRequires");
+      expect(globalTypes).toContain("import('./_types.d.ts').PermissionId");
+
+      // Check documentation
+      expect(globalTypes).toContain('MCPaC ambient namespace');
+      expect(globalTypes).toContain('without explicit imports');
+    });
+
+    test('should generate lightweight type definitions', () => {
+      const readFileTool = tools.find((t) => t.name === 'read_file');
+      expect(readFileTool).toBeDefined();
+
+      if (!readFileTool) return;
+
+      const toolDefs = [
+        {
+          serverName: TEST_SERVER_NAME,
+          toolName: readFileTool.name,
+          description: readFileTool.description,
+          inputSchema: readFileTool.inputSchema,
+        },
+      ];
+
+      const typeDefsCode = generator.generateTypeDefinitions(toolDefs);
+
+      // Check it imports from server index.d.ts
+      expect(typeDefsCode).toContain("from './test-filesystem/index.d.ts'");
+      expect(typeDefsCode).toContain('import type { TestFilesystemServer }');
+
+      // Check McpServers interface
+      expect(typeDefsCode).toContain('export interface McpServers');
+      expect(typeDefsCode).toContain('testFilesystem: TestFilesystemServer');
+
+      // Check it does NOT contain redundant type aliases
+      expect(typeDefsCode).not.toContain('type testFilesystem_ReadFileInput');
+
+      // Check capability types
+      expect(typeDefsCode).toContain('export type Methods = MethodsFromServers<McpServers>');
+      expect(typeDefsCode).toContain('export type PermissionId = keyof Methods & string');
+      expect(typeDefsCode).toContain('export type McpRequires<T extends readonly PermissionId[]>');
+
+      // Check documentation recommends MCPaC namespace
+      expect(typeDefsCode).toContain('MCPaC.McpRequires');
+    });
+  });
 });

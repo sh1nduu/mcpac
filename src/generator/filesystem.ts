@@ -79,7 +79,44 @@ export class FilesystemManager {
   }
 
   /**
-   * Write tool file
+   * Write tool type definition file (.d.ts)
+   */
+  async writeToolTypeDefinition(
+    serverName: string,
+    toolName: string,
+    typeCode: string,
+  ): Promise<void> {
+    const serverDir = await this.prepareServerDirectory(serverName);
+    const camelToolName = toolName.includes('_')
+      ? toolName
+          .split('_')
+          .map((p, i) => (i === 0 ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+          .join('')
+      : toolName;
+    const filePath = join(serverDir, `${camelToolName}.d.ts`);
+    await writeFile(filePath, typeCode, 'utf-8');
+  }
+
+  /**
+   * Write server index.d.ts (type aggregation)
+   */
+  async writeServerIndexTypes(serverName: string, typeCode: string): Promise<void> {
+    const serverDir = join(this.outputDir, serverName);
+    const filePath = join(serverDir, 'index.d.ts');
+    await writeFile(filePath, typeCode, 'utf-8');
+  }
+
+  /**
+   * Write global.d.ts (MCPaC ambient namespace)
+   */
+  async writeGlobalTypes(typeCode: string): Promise<void> {
+    const filePath = join(this.outputDir, 'global.d.ts');
+    await writeFile(filePath, typeCode, 'utf-8');
+  }
+
+  /**
+   * Write tool file (DEPRECATED - use writeToolTypeDefinition instead)
+   * @deprecated
    */
   async writeToolFile(serverName: string, toolName: string, code: GeneratedCode): Promise<void> {
     // Ensure runtime shim
@@ -110,18 +147,10 @@ export class FilesystemManager {
   }
 
   /**
-   * Write root index.ts
-   */
-  async writeRootIndex(indexCode: string): Promise<void> {
-    const filePath = join(this.outputDir, 'index.ts');
-    await writeFile(filePath, indexCode, 'utf-8');
-  }
-
-  /**
-   * Write type definitions file (_types.ts)
+   * Write type definitions file (_types.d.ts)
    */
   async writeTypeDefinitions(typeDefinitionsCode: string): Promise<void> {
-    const filePath = join(this.outputDir, '_types.ts');
+    const filePath = join(this.outputDir, '_types.d.ts');
     await writeFile(filePath, typeDefinitionsCode, 'utf-8');
   }
 

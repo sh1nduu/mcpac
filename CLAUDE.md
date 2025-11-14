@@ -308,7 +308,18 @@ File not found: ./nonexistent.txt
    - `templates/runtime-base.template.ts`: Runtime template source (loaded via Bun.macro)
    - `templates/loadTemplate.macro.ts`: Bun macro for bundle-time template loading (like Rust's `include_str!`)
    - **Template Loading**: Uses Bun.macro to embed template at bundle-time for single executable support
-   - Output: `servers/<serverName>/<toolName>.ts` + `index.ts` + `servers/_mcpac_runtime.ts`
+   - **Output Structure** (hierarchical .d.ts):
+     ```
+     servers/
+     ├── _mcpac_runtime.ts       # Runtime implementation (IPC, capability system)
+     ├── _types.d.ts             # Lightweight type aggregator (McpServers interface)
+     ├── global.d.ts             # MCPaC ambient namespace (no-import usage)
+     ├── <serverName>/
+     │   ├── <toolName>.d.ts     # Individual tool type definitions
+     │   └── index.d.ts          # Server-level type aggregation
+     └── index.ts                # Legacy exports (optional)
+     ```
+   - **Token Efficiency**: Tool types are split into separate `.d.ts` files, reducing context size by 60-75% for large projects
 
 3. **Execution Layer** (`src/executor/`)
    - `ipc-executor.ts`: **Production executor** with IPC-based MCP communication
@@ -385,6 +396,33 @@ UNTRUSTED
 - `server.ts`: IPCServer handles tool call requests, enforces permissions
 - `protocol.ts`: JSON-RPC 2.0 protocol definitions (no permission field in requests)
 - Permission checks use `this.grantedPermissions` (trusted), not request data (untrusted)
+
+### User Code Pattern (MCPaC Namespace)
+
+Users write capability-based code using the `MCPaC.McpRequires` ambient type (no imports needed):
+
+**Recommended Pattern (MCPaC namespace - 1 line)**:
+```typescript
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile', 'github.createIssue']>;
+
+const file = await runtime.filesystem.readFile({ path: '/data.txt' });
+await runtime.github.createIssue({ title: 'Bug', body: file.content[0].text });
+```
+
+**Alternative Pattern (explicit import - 2 lines)**:
+```typescript
+import type { McpRequires } from './servers/_types.d.ts';
+declare const runtime: McpRequires<['filesystem.readFile']>;
+
+const file = await runtime.filesystem.readFile({ path: '/data.txt' });
+```
+
+**Key Points**:
+- `MCPaC.McpRequires` is an ambient namespace (defined in `servers/global.d.ts`)
+- Permissions are declared in type parameters: `['server.tool', ...]`
+- Runtime object is injected at execution time by `RuntimeInjector`
+- Type-safe nested access: `runtime.serverName.toolName(args)`
+- Permission validation happens via AST analysis (PermissionValidator)
 
 ### Critical Type Conversions
 
@@ -558,6 +596,9 @@ The project version is defined in two locations that must be kept in sync:
 8. **Host-side permission enforcement** - Permission checks happen in IPCServer only, user-side code has no enforcement
 9. **Template loading via Bun.macro** - Runtime template embedded at bundle-time, not loaded at runtime (enables single executable)
 10. **IPC protocol has no permissions** - Permissions never sent via IPC, stored in IPCServer constructor (security)
+11. **Hierarchical .d.ts structure** - Types are split into `<server>/<tool>.d.ts` files for token efficiency; `_types.d.ts` is lightweight aggregator
+12. **MCPaC ambient namespace** - User code can use `MCPaC.McpRequires<[...]>` without imports (defined in `servers/global.d.ts`)
+13. **No implementation in .d.ts files** - Generated `.d.ts` files contain only type definitions; runtime logic is in `_mcpac_runtime.ts`
 
 ## Documentation Updates
 
