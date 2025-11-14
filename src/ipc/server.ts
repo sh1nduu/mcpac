@@ -33,10 +33,12 @@ export class IPCServer {
   private mcpManager: MCPManager;
   private clients: Set<Socket> = new Set();
   private isClosing: boolean = false;
+  private grantedPermissions: string[];
 
-  constructor(mcpManager: MCPManager, socketPath?: string) {
+  constructor(mcpManager: MCPManager, socketPath?: string, grantedPermissions: string[] = []) {
     this.mcpManager = mcpManager;
     this.socketPath = socketPath || `/tmp/mcpac-${process.pid}.sock`;
+    this.grantedPermissions = grantedPermissions;
     this.server = createServer();
   }
 
@@ -146,17 +148,17 @@ export class IPCServer {
     }
 
     // Check permissions (capability-based security)
+    // Use host-side stored permissions (trusted), not request data (untrusted)
     const permissionId = `${request.params.server}.${request.params.tool}`;
-    const grantedPermissions = request.params.grantedPermissions || [];
 
-    if (!grantedPermissions.includes(permissionId)) {
+    if (!this.grantedPermissions.includes(permissionId)) {
       const response = createErrorResponse(
         request.id,
         IPCErrorCode.PERMISSION_DENIED,
         `Permission denied: '${permissionId}' is not in granted permissions`,
         {
           required: permissionId,
-          granted: grantedPermissions,
+          granted: this.grantedPermissions,
         },
       );
       this.sendResponse(socket, response);

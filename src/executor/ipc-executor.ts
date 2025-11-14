@@ -107,8 +107,8 @@ export class IPCExecutor {
       await writeFile(tempFile, modifiedCode, 'utf-8');
       debugLog(`Modified code written to ${tempFile}`);
 
-      // Create IPC server
-      const ipcServer = new IPCServer(options.mcpManager);
+      // Create IPC server with trusted permissions from host side
+      const ipcServer = new IPCServer(options.mcpManager, undefined, grantedPermissions);
 
       try {
         // Start IPC server
@@ -287,7 +287,7 @@ export class IPCExecutor {
       await writeFile(tempFile, modifiedCode, 'utf-8');
       debugLog(`Modified code written to ${tempFile}`);
 
-      const ipcServer = new IPCServer(options.mcpManager);
+      const ipcServer = new IPCServer(options.mcpManager, undefined, grantedPermissions);
 
       try {
         await ipcServer.start();

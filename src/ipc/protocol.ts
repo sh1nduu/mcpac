@@ -15,11 +15,6 @@ export interface IPCRequest {
     server: string;
     tool: string;
     arguments: Record<string, unknown>;
-    /**
-     * Granted permissions for capability-based security validation
-     * Format: 'server.tool' (e.g., 'filesystem.read_file')
-     */
-    grantedPermissions?: string[];
   };
 }
 
