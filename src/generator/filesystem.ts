@@ -101,6 +101,14 @@ export class FilesystemManager {
   }
 
   /**
+   * Write type definitions file (_types.ts)
+   */
+  async writeTypeDefinitions(typeDefinitionsCode: string): Promise<void> {
+    const filePath = join(this.outputDir, '_types.ts');
+    await writeFile(filePath, typeDefinitionsCode, 'utf-8');
+  }
+
+  /**
    * Clean entire output directory
    */
   async clean(): Promise<void> {

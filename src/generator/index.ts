@@ -2,7 +2,7 @@ import type { MCPManager } from '../mcp/manager.js';
 import { output } from '../utils/output.js';
 import { CodeGenerator } from './codegen.js';
 import { FilesystemManager, type GenerateOptions } from './filesystem.js';
-import { SchemaParser } from './parser.js';
+import { SchemaParser, type ToolDefinition } from './parser.js';
 
 export class Generator {
   private parser: SchemaParser;
@@ -20,8 +20,9 @@ export class Generator {
 
   /**
    * Generate code for the specified server
+   * Returns the tool definitions that were successfully generated
    */
-  async generateServer(serverName: string): Promise<void> {
+  async generateServer(serverName: string): Promise<ToolDefinition[]> {
     output.info(`Generating code for ${serverName}...`);
 
     // Get tool definitions
@@ -29,16 +30,18 @@ export class Generator {
 
     if (tools.length === 0) {
       output.warn(`  ⚠ No tools found for ${serverName}`);
-      return;
+      return [];
     }
 
     // Generate code for each tool
     const toolNames: string[] = [];
+    const successfulTools: ToolDefinition[] = [];
     for (const tool of tools) {
       try {
         const code = await this.codegen.generateToolCode(tool);
         await this.fs.writeToolFile(serverName, tool.toolName, code);
         toolNames.push(tool.toolName);
+        successfulTools.push(tool);
         output.verbose(`  ✓ ${tool.toolName}`);
       } catch (error) {
         output.error(
@@ -53,6 +56,8 @@ export class Generator {
       await this.fs.writeServerIndex(serverName, indexCode);
       output.info(`✓ Generated ${toolNames.length} tools for ${serverName}`);
     }
+
+    return successfulTools;
   }
 
   /**
@@ -73,10 +78,16 @@ export class Generator {
     await this.fs.ensureRuntimeShim();
 
     const successfulServers: string[] = [];
+    const allTools: ToolDefinition[] = [];
+
+    // Generate code for each server and collect tool definitions
     for (const serverName of servers) {
       try {
-        await this.generateServer(serverName);
-        successfulServers.push(serverName);
+        const tools = await this.generateServer(serverName);
+        if (tools.length > 0) {
+          successfulServers.push(serverName);
+          allTools.push(...tools);
+        }
         if (!output.isQuiet()) {
           console.log(); // Empty line
         }
@@ -88,6 +99,12 @@ export class Generator {
     }
 
     if (successfulServers.length > 0) {
+      // Generate type definitions file (_types.ts) for capability system
+      output.info('Generating type definitions for capability system...');
+      const typeDefinitionsCode = this.codegen.generateTypeDefinitions(allTools);
+      await this.fs.writeTypeDefinitions(typeDefinitionsCode);
+      output.info('✓ Generated type definitions\n');
+
       // Generate root index.ts
       const rootIndexCode = this.codegen.generateRootIndex(successfulServers);
       await this.fs.writeRootIndex(rootIndexCode);

@@ -149,4 +149,112 @@ export class CodeGenerator {
 
     return `// Auto-generated - do not edit\n\n${imports}\n\nexport { ${exports} };\n`;
   }
+
+  /**
+   * Generate type definitions file (_types.ts) for capability-based permissions
+   * Creates McpServers interface and McpRequires type alias
+   */
+  generateTypeDefinitions(allTools: ToolDefinition[]): string {
+    // Group tools by server
+    const serverGroups = new Map<string, ToolDefinition[]>();
+    for (const tool of allTools) {
+      if (!serverGroups.has(tool.serverName)) {
+        serverGroups.set(tool.serverName, []);
+      }
+      const tools = serverGroups.get(tool.serverName);
+      if (tools) {
+        tools.push(tool);
+      }
+    }
+
+    // Generate McpServers interface
+    const serverInterfaces: string[] = [];
+    for (const [serverName, tools] of serverGroups.entries()) {
+      const methods = tools
+        .map((tool) => {
+          const inputTypeName = this.toTypeName(tool.toolName, 'Input');
+          const outputTypeName = this.toTypeName(tool.toolName, 'Output');
+          const functionName = this.toCamelCase(tool.toolName);
+          const description = tool.description ? `\n    /** ${tool.description} */` : '';
+          return `${description}\n    ${functionName}(args: ${inputTypeName}): Promise<${outputTypeName}>;`;
+        })
+        .join('\n');
+
+      const camelServerName = this.toCamelCase(serverName.replace(/-/g, '_'));
+      serverInterfaces.push(`  ${camelServerName}: {${methods}\n  };`);
+    }
+
+    const typeDefinitionsCode = `// Auto-generated - do not edit
+// This file contains type definitions for capability-based permission system
+
+import type {
+  MethodsFromServers,
+  PickNamespacedRuntime,
+} from './_mcpac_runtime.js';
+import type { MCPToolResult } from './_mcpac_runtime.js';
+
+// Import all type definitions
+${Array.from(serverGroups.keys())
+  .map((serverName) => {
+    const camelName = this.toCamelCase(serverName.replace(/-/g, '_'));
+    return `import type * as ${camelName}Types from './${serverName}/index.js';`;
+  })
+  .join('\n')}
+
+// Define input/output types for each server
+${Array.from(serverGroups.entries())
+  .map(([serverName, tools]) => {
+    const camelName = this.toCamelCase(serverName.replace(/-/g, '_'));
+    return tools
+      .map((tool) => {
+        const inputTypeName = this.toTypeName(tool.toolName, 'Input');
+        const outputTypeName = this.toTypeName(tool.toolName, 'Output');
+        return `type ${camelName}_${inputTypeName} = ${camelName}Types.${inputTypeName};\ntype ${camelName}_${outputTypeName} = ${camelName}Types.${outputTypeName};`;
+      })
+      .join('\n');
+  })
+  .join('\n\n')}
+
+/**
+ * MCP Servers interface defining all available servers and their tools.
+ * This interface is used to generate flat permission IDs in "server.tool" format.
+ */
+export interface McpServers {
+${serverInterfaces.join('\n')}
+}
+
+/**
+ * Flat methods map with "server.tool" keys.
+ * Generated from McpServers interface.
+ */
+export type Methods = MethodsFromServers<McpServers>;
+
+/**
+ * Union of all permission IDs in "server.tool" format.
+ * Examples: 'filesystem.read_file' | 'github.create_issue'
+ */
+export type PermissionId = keyof Methods & string;
+
+/**
+ * McpRequires type for capability-based permission declarations.
+ * Use this type to declare required permissions in your code.
+ *
+ * @template T - Array of permission IDs in "server.tool" format
+ *
+ * @example
+ * \`\`\`ts
+ * import type { McpRequires } from './servers/_types';
+ *
+ * async function processFiles(rt: McpRequires<['filesystem.read_file', 'filesystem.write_file']>) {
+ *   const content = await rt.filesystem.read_file({ path: '/data.txt' });
+ *   await rt.filesystem.write_file({ path: '/output.txt', content: content.content[0].text });
+ * }
+ * \`\`\`
+ */
+export type McpRequires<T extends readonly PermissionId[]> =
+  PickNamespacedRuntime<T, PermissionId, Methods>;
+`;
+
+    return typeDefinitionsCode;
+  }
 }
