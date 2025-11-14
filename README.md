@@ -1,90 +1,100 @@
-# MCPaC (mcpac)
+# MCPaC (mcpac) — *MCP as Code*
 
-**MCP as Code** - Execute code with MCP servers as libraries
+Execute TypeScript/JavaScript code using MCP servers as if they were libraries —  
+AI agents call functions instead of generating raw MCP JSON.
+
+---
 
 ## ⚠️ Security Warning
 
 **CRITICAL: This tool executes arbitrary code that may interact with your system. Use with extreme caution.**
 
-- **Code Execution Risk**: This tool runs TypeScript/JavaScript code that can access your filesystem, network, and system resources
-- **MCP Server Risk**: MCP servers have access to your system based on their configuration (filesystem access, API keys, etc.)
+- **Code Execution Risk**: Code run via `mcpac execute` can access your filesystem, network, and system resources
+- **MCP Server Risk**: MCP servers may access your system depending on their configuration (filesystem paths, API keys, HTTP endpoints, etc.)
 - **Untrusted Code**: Never execute code from untrusted sources
-- **Sensitive Data**: Be cautious when using MCP servers with access to sensitive data
-- **Review Before Execution**: Always review generated code and MCP server permissions before running
+- **Sensitive Data**: Be very careful when MCP servers can see secrets, source code, or production data
+- **Review Before Execution**: Always review:
+  - The MCP servers you configure
+  - The permissions you grant with `--grant`
+  - The code you are about to execute
 
-**By using this tool, you acknowledge these risks and take full responsibility for any consequences.**
+**By using MCPaC, you acknowledge these risks and take full responsibility for any consequences.**
 
 ---
 
 ## Overview
 
-MCPaC is a tool that converts Model Context Protocol (MCP) servers into TypeScript libraries. It automatically generates TypeScript code from MCP tool definitions, enabling coding agents (like Claude, Cursor, etc.) to execute generated code.
+MCPaC is a CLI tool that:
+
+- Connects to MCP servers (filesystem, GitHub, HTTP APIs, etc.)
+- Generates TypeScript type definitions for their tools
+- Executes TypeScript/JavaScript code that calls those tools via a special injected `runtime` object
+
+Typical use cases:
+
+- Let AI coding agents (Claude, Cursor, etc.) call MCP tools without generating MCP JSON
+- Keep occasionally used MCP servers available to agents via code, without maintaining full direct-tool integration
+- Experiment with MCP servers from TypeScript instead of hand-written MCP JSON in a small, isolated sandbox
+
+This project is one concrete implementation of the “code execution with MCP” idea described in Anthropic’s blog post: https://www.anthropic.com/engineering/code-execution-with-mcp
+
+## Positioning / Scope
+
+MCPaC is not intended to replace traditional MCP direct tool calls across your entire stack. It is a complementary approach that works best when:
+
+- you want AI coding agents to occasionally use MCP servers without loading all tool definitions into context
+- you prefer agents to write short pieces of code that compose multiple tools, rather than issuing many individual direct tool calls
+- you are experimenting with new or low-frequency MCP servers and do not want to maintain full, first-class integrations yet
+
+For high-frequency or latency-sensitive tools, traditional direct MCP tool calling may still be a better fit. MCPaC is designed as an additional option, not a universal replacement.
+
+---
 
 ## Features
 
-- 🚀 **TypeScript Code Generation from MCP Servers**: Automatically convert tool definitions into type-safe APIs
-- 💻 **Code Execution Environment**: Execute code using generated MCP libraries
-- 🔐 **Capability-Based Permission System**: Explicit permission declarations with type safety
-- 🔧 **Server Management**: Easily manage multiple MCP servers
-- 🌐 **Multiple Transport Support**: Support both STDIO (local process) and HTTP (remote server)
-- 🔍 **Tool Exploration**: Explore available functions and type definitions via CLI
-- 📦 **Single Binary**: Single executable file with no runtime dependencies (for distribution)
-- ⚡ **Automatic Cleanup**: Automatic resource management via inter-process communication
+- 🚀 **TypeScript Code Generation from MCP Servers**  
+  Automatically convert MCP tool definitions into type-safe APIs
+
+- 💻 **Code Execution Environment**  
+  Execute TypeScript/JavaScript using the generated MCP libraries
+
+- 🔐 **Capability-Based Permission System**  
+  Tools must be explicitly declared in code and explicitly granted via CLI
+
+- 🔧 **Server Management**  
+  Add, list, test, and remove MCP servers (STDIO & HTTP)
+
+- 🌐 **Multiple Transport Support**  
+  - STDIO: local processes (`npx @modelcontextprotocol/server-*`, etc.)
+  - HTTP: remote MCP servers
+
+- 🔍 **Tool Exploration**  
+  Discover tools and their argument types via CLI
+
+- 📦 **Single Binary (with a current limitation)**  
+  Distributed as a single executable, but still requires Bun at execution time today — future versions aim to remove this dependency.
+
+- ⚡ **Automatic Cleanup**  
+  MCP connections are managed and cleaned up automatically
+
+---
 
 ## Installation
 
-### Binary Download (Recommended)
+Download the latest release from:  
+https://github.com/sh1nduu/mcpac/releases
 
-Download the binary for your platform from the latest release:
+### macOS (Apple Silicon example)
 
-**Linux (x64)**
 ```bash
-# Download
-wget https://github.com/sh1nduu/mcpac/releases/download/v0.1.0/mcpac-0.1.0-linux-x64
-
-# Add execute permission
-chmod +x mcpac-0.1.0-linux-x64
-
-# Install
-sudo mv mcpac-0.1.0-linux-x64 /usr/local/bin/mcpac
-
-# Verify
-mcpac --version
-```
-
-**macOS (Apple Silicon)**
-```bash
-# Download
-curl -L https://github.com/sh1nduu/mcpac/releases/download/v0.1.0/mcpac-0.1.0-darwin-arm64 -o mcpac
-
-# Add execute permission
-chmod +x mcpac
-
-# Install
-sudo mv mcpac /usr/local/bin/
-
-# Verify
-mcpac --version
-```
-
-**macOS (Intel)**
-```bash
-curl -L https://github.com/sh1nduu/mcpac/releases/download/v0.1.0/mcpac-0.1.0-darwin-x64 -o mcpac
+curl -L https://github.com/sh1nduu/mcpac/releases/download/v0.3.0/mcpac-0.3.0-darwin-arm64 -o mcpac
 chmod +x mcpac
 sudo mv mcpac /usr/local/bin/
-```
-
-**Windows (PowerShell)**
-```powershell
-# Download
-Invoke-WebRequest -Uri "https://github.com/sh1nduu/mcpac/releases/download/v0.1.0/mcpac-0.1.0-windows-x64.exe" -OutFile "mcpac.exe"
-
-# Add to PATH (move to any directory)
-Move-Item mcpac.exe C:\Program Files\mcpac\
-
-# Verify
 mcpac --version
 ```
+
+> Similar binaries are available for Linux (x64), macOS (Intel), and Windows (x64).  
+> See the release page for exact filenames and installation paths.
 
 ### Build from Source
 
@@ -96,79 +106,74 @@ bun run build
 ./mcpac --version
 ```
 
-### Development Mode
+---
 
-```bash
-git clone https://github.com/sh1nduu/mcpac.git
-cd mcpac
-bun install
-bun run dev --version
-```
+## 🧠 Core Concepts
 
-## Quick Start
+MCPaC revolves around 4 ideas:
 
-### 1. Add MCP Server
+1. **Server registration**  
+   You register MCP servers with `mcpac server add`.
+
+2. **Code generation**  
+   You run `mcpac generate` to create TypeScript type definitions for all servers and tools.
+
+3. **Injected runtime**  
+   When you run `mcpac execute`, MCPaC injects a special `runtime` object into your code.  
+   You **do not create or import** this object yourself.
+
+4. **Capability-based permissions**  
+   Your code declares which tools it needs, and you must pass matching `--grant` flags when executing.
+
+If **declared permissions** and **granted permissions** do not match, execution fails with a clear error.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Add an MCP server
+
+Example: Filesystem server allowing access to a specific directory.
 
 ```bash
 mcpac server add filesystem \
   --command npx \
   --args @modelcontextprotocol/server-filesystem \
-  --args /path/to/allowed/directory
+  --args ./allowed-directory
 ```
 
-### 2. Generate TypeScript Code
+### 2. Generate TypeScript code
 
 ```bash
 mcpac generate
 ```
 
-Generated files:
-```
+Generated structure:
+
+```text
 servers/
-├── _mcpac_runtime.ts       # Runtime implementation (IPC, capability system)
-├── _types.d.ts             # Lightweight type aggregator
-├── global.d.ts             # MCPaC ambient namespace (no import needed!)
+├── _mcpac_runtime.ts   # Runtime implementation (IPC, capability system)
+├── _types.d.ts         # Root types for explicit import
+├── global.d.ts         # MCPaC ambient namespace (for mcpac execute)
 └── filesystem/
-    ├── index.d.ts          # Server-level type definitions
-    ├── readFile.d.ts       # Individual tool type definitions
-    ├── writeFile.d.ts
-    └── ...
+    ├── index.d.ts      # Server-level types
+    ├── readFile.d.ts   # Individual tool definitions
+    └── writeFile.d.ts
 ```
 
-### 3. Explore Available Tools
-
-```bash
-mcpac tools list
-```
-
-Output:
-```
-Available tools (5):
-
-filesystem.readFile
-  Read file contents from the allowed directory
-
-filesystem.writeFile
-  Write content to a file in the allowed directory
-
-...
-```
-
-### 4. Write Code Using Generated Libraries
+### 3. Write code
 
 Create `example.ts`:
-```typescript
-// Declare required permissions (MCPaC namespace - no import needed!)
+
+```ts
+// Recommended: MCPaC ambient namespace (for mcpac execute)
+// DO NOT create runtime yourself – it is injected at execution time.
 declare const runtime: MCPaC.McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
 
 // Read file
-const result = await runtime.filesystem.readFile({
-  path: 'example.txt'
-});
-
-// Extract text content
-const content = result.content.find(c => c.type === 'text')?.text;
-console.log('File content:', content);
+const readResult = await runtime.filesystem.readFile({ path: 'example.txt' });
+const text = readResult.content.find(c => c.type === 'text')?.text;
+console.log('File content:', text);
 
 // Write file
 await runtime.filesystem.writeFile({
@@ -177,26 +182,86 @@ await runtime.filesystem.writeFile({
 });
 ```
 
-**Alternative syntax** (explicit import):
-```typescript
-import type { McpRequires } from './servers/_types.js';
-declare const runtime: McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
-```
-
-### 5. Execute Code with Permissions
+### 4. Execute with permissions
 
 ```bash
-# Grant required permissions when executing
-mcpac execute -f example.ts --grant filesystem.readFile,filesystem.writeFile
+mcpac execute -f example.ts \
+  --grant filesystem.readFile,filesystem.writeFile
 ```
 
-## Usage
+If the requested tools in `McpRequires<...>` do not match the tools in `--grant`, execution is blocked.
+
+---
+
+## 🧰 Types & Runtime: Ambient Namespace vs Explicit Import
+
+MCPaC exposes types in two ways:
+
+### 1. Ambient namespace (recommended for `mcpac execute`)
+
+```ts
+// Available only when you run via `mcpac execute` after `mcpac generate`
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+```
+
+This relies on `servers/global.d.ts`:
+
+```ts
+declare namespace MCPaC {
+  export type McpRequires<T extends readonly string[]> =
+    import('./_types.d.ts').McpRequires<T>;
+}
+```
+
+> ⚠️ The ambient `MCPaC` namespace is intended for the `mcpac execute` environment only.
+> It may not work as expected in bundlers, ts-node, or other tooling without extra configuration.
+
+### 2. Explicit import (advanced / custom integration)
+
+```ts
+import type { McpRequires } from './servers/_types.js';
+
+declare const runtime: McpRequires<['filesystem.readFile']>;
+```
+
+Use this style if you want to reuse MCPaC’s generated types inside your own runtime or agent harness and are comfortable wiring up MCP connections and capability checks yourself. The primary supported path is still `mcpac execute`; this explicit-import style is an advanced/custom option.
+
+---
+
+## 🔐 Permission System
+
+**In code (declaring capabilities):**
+
+```ts
+declare const runtime: MCPaC.McpRequires<[
+  'filesystem.listDirectory',
+  'filesystem.readFile'
+]>;
+```
+
+**At execution time (granting capabilities):**
+
+```bash
+mcpac execute -f script.ts \
+  --grant filesystem.listDirectory,filesystem.readFile
+```
+
+Rules:
+
+- Your code can only call tools listed in `McpRequires<...>`
+- `mcpac execute` will only allow tools listed in `--grant`
+- Both lists must match, otherwise execution fails
+
+---
+
+## CLI Usage
 
 ### Getting Started
 
-Interactive setup guide:
 ```bash
-mcpac getting-started
+mcpac getting-started   # Interactive setup
+mcpac info              # Show current configuration & servers
+mcpac examples          # Show example snippets
 ```
 
 ### Server Management
@@ -211,7 +276,7 @@ mcpac server add <name> --type http --url <url> --headers "KEY=VALUE"
 # List servers
 mcpac server list
 
-# Test connection
+# Test server connection
 mcpac server test <name>
 
 # Remove server
@@ -224,10 +289,10 @@ mcpac server remove <name>
 # Generate for all servers
 mcpac generate
 
-# Generate for specific server
+# Generate for a specific server
 mcpac generate -s <server-name>
 
-# Force overwrite
+# Overwrite existing generated files
 mcpac generate --force
 ```
 
@@ -237,131 +302,96 @@ mcpac generate --force
 # List all tools
 mcpac tools list
 
-# List tools for specific server
+# List tools for a specific server
 mcpac tools list -s <server-name>
 
-# Show detailed tool description
+# Show detailed tool description (schema, examples, etc.)
 mcpac tools describe <function_name>
 ```
 
-### Direct Tool Invocation
-
-Call MCP tools directly from CLI without writing code:
+### Direct Tool Invocation (no code)
 
 ```bash
-# Call tool with named flags
+# Call tool with flags
 mcpac tools call readFile --path example.txt
 
-# Call tool with JSON string
+# Call with JSON string
 mcpac tools call readFile --json '{"path":"example.txt"}'
 
-# Call tool with stdin
+# Call with JSON from stdin
 echo '{"path":"example.txt"}' | mcpac tools call readFile --stdin
+```
 
-# Output formats
+Output formats:
+
+```bash
 mcpac tools call readFile --path example.txt --output-format text  # Default
 mcpac tools call readFile --path example.txt --output-format json  # With metadata
 mcpac tools call readFile --path example.txt --output-format raw   # Raw MCP response
-
-# Skip validation
-mcpac tools call readFile --path example.txt --no-validate
-
-# Quiet mode
-mcpac tools call readFile --path example.txt -q
-
-# Verbose mode (show debug logs)
-mcpac tools call readFile --path example.txt -v
 ```
 
-**Argument Input Methods** (priority order):
-1. `--stdin`: Read arguments from stdin as JSON
-2. `--json`: Provide arguments as JSON string
-3. Named flags: Use `--key value` or `--key=value` format
+Extra flags:
 
-**Exit Codes**:
-- `0`: Success
-- `1`: Argument error or validation failure
-- `2`: Tool execution error
-- `3`: Server connection error
+- `--no-validate` : Skip argument validation
+- `-q` / `--quiet`: Suppress non-critical output
+- `-v` / `--verbose`: Print debug logs
+
+Exit codes:
+
+- `0` : Success
+- `1` : Argument error / validation failure
+- `2` : Tool execution error
+- `3` : Server connection error
 
 ### Code Execution
 
 ```bash
-# Execute from file with permissions
-mcpac execute -f <file.ts> --grant server.tool1,server.tool2
+# Execute from file
+mcpac execute -f script.ts --grant server.tool1,server.tool2
 
 # Execute inline code
-mcpac execute -c "..." --grant filesystem.readFile
+mcpac execute -c "/* code here */" --grant filesystem.readFile
 
 # Execute from stdin
 cat script.ts | mcpac execute --stdin --grant filesystem.readFile
 
-# Skip type checking
+# Skip type checking (faster, but less safe)
 mcpac execute -f script.ts --no-typecheck --grant filesystem.readFile
 
-# Quiet mode (suppress non-critical output)
-mcpac execute -f script.ts -q --grant filesystem.readFile
-
-# Verbose mode (show MCP server logs)
+# Verbose / quiet
 mcpac execute -f script.ts -v --grant filesystem.readFile
+mcpac execute -f script.ts -q --grant filesystem.readFile
 ```
 
-**Permission System:**
-
-Your code must explicitly declare required permissions using the MCPaC namespace:
-
-```typescript
-// Recommended: MCPaC namespace (no import needed)
-declare const runtime: MCPaC.McpRequires<['server.tool1', 'server.tool2']>;
-
-// Alternative: explicit import
-import type { McpRequires } from './servers/_types.js';
-declare const runtime: McpRequires<['server.tool1', 'server.tool2']>;
-```
-
-Then grant those permissions at execution time with `--grant`:
-
-```bash
-mcpac execute -f script.ts --grant server.tool1,server.tool2
-```
-
-If required permissions don't match granted permissions, execution will fail with a clear error message.
-
-### Information Commands
-
-```bash
-# Check current status
-mcpac info
-
-# View usage examples
-mcpac examples
-
-# Show help
-mcpac --help
-mcpac <command> --help
-```
+---
 
 ## Examples
 
 ### Example 1: File Operations
 
-```typescript
-// Declare required permissions (MCPaC namespace - no import needed!)
-declare const runtime: MCPaC.McpRequires<['filesystem.listDirectory', 'filesystem.readFile']>;
+```ts
+// Declare required permissions
+declare const runtime: MCPaC.McpRequires<[
+  'filesystem.listDirectory',
+  'filesystem.readFile'
+]>;
 
 // List directory
-const dirResult = await runtime.filesystem.listDirectory({ path: '.' });
-console.log(dirResult.content[0].text);
+const dir = await runtime.filesystem.listDirectory({ path: '.' });
+const listText = dir.content.find(c => c.type === 'text')?.text;
+console.log('Directory listing:', listText);
 
 // Read file
-const fileResult = await runtime.filesystem.readFile({ path: 'README.md' });
-const content = fileResult.content.find(c => c.type === 'text')?.text;
+const file = await runtime.filesystem.readFile({ path: 'README.md' });
+const content = file.content.find(c => c.type === 'text')?.text;
 console.log('Content length:', content?.length);
 ```
 
-Run with:
+Run:
+
 ```bash
-mcpac execute -f script.ts --grant filesystem.listDirectory,filesystem.readFile
+mcpac execute -f script.ts \
+  --grant filesystem.listDirectory,filesystem.readFile
 ```
 
 ### Example 2: GitHub Integration
@@ -377,11 +407,9 @@ mcpac server add github \
 mcpac generate
 ```
 
-```typescript
-// Declare required permissions (MCPaC namespace - no import needed!)
+```ts
 declare const runtime: MCPaC.McpRequires<['github.createIssue']>;
 
-// Create issue
 const result = await runtime.github.createIssue({
   owner: 'username',
   repo: 'repository',
@@ -389,82 +417,112 @@ const result = await runtime.github.createIssue({
   body: 'Description of the bug'
 });
 
-console.log('Created issue:', result.content[0].text);
+const text = result.content.find(c => c.type === 'text')?.text;
+console.log('Created issue:', text);
 ```
 
-Run with:
+Run:
+
 ```bash
 mcpac execute -f script.ts --grant github.createIssue
 ```
 
-### Example 3: HTTP Transport
+### Example 3: Multi-tool workflow with loops
+
+This example shows how an agent can coordinate multiple tools in a loop.  
+Assume you have a local JSON file that defines GitHub issues to create:
+
+```json
+[
+  { "title": "Bug: login fails", "body": "Steps to reproduce..." },
+  { "title": "Feature: dark mode", "body": "It would be nice if..." }
+]
+```
+
+You can let an agent write code that reads this configuration and creates issues on GitHub:
+
+```ts
+// Use both filesystem and GitHub tools in a loop
+declare const runtime: MCPaC.McpRequires<[
+  'filesystem.readFile',
+  'github.createIssue'
+]>;
+
+// Read issue definitions from a local JSON file
+const fileResult = await runtime.filesystem.readFile({ path: './issues.json' });
+const text = fileResult.content.find(c => c.type === 'text')?.text ?? '[]';
+
+type IssueDef = { title: string; body: string };
+const issues = JSON.parse(text) as IssueDef[];
+
+// Create issues on GitHub in a loop
+for (const issue of issues) {
+  const result = await runtime.github.createIssue({
+    owner: 'username',
+    repo: 'repository',
+    title: issue.title,
+    body: issue.body,
+  });
+
+  const created = result.content.find(c => c.type === 'text')?.text;
+  console.log('Created issue:', created);
+}
+```
+
+Run:
 
 ```bash
-# Add HTTP server
-mcpac server add api \
-  --type http \
-  --url https://example.com/mcp \
-  --headers "Authorization=Bearer token123"
+mcpac execute -f script.ts --grant filesystem.readFile,github.createIssue
 ```
+
+In a real agent workflow, this kind of multi-tool loop lives entirely in the execution environment:  
+the model only needs to generate the code once, and then the runtime handles all iterations and tool coordination.
+
+---
 
 ## Configuration
 
-Configuration file location: `./config/mcp-servers.json`
+Default config file:
 
-You can override the location with the `MCPAC_CONFIG_PATH` environment variable:
+```text
+./config/mcp-servers.json
+```
+
+Override via environment variable:
 
 ```bash
 MCPAC_CONFIG_PATH=/custom/path/config.json mcpac server list
 ```
 
+---
+
 ## Architecture
 
-mcpac consists of three main layers:
+MCPaC consists of three main layers:
 
-1. **MCP Client Layer**: Manages connections to MCP servers
-2. **Code Generation Layer**: Converts MCP tool definitions to TypeScript
-3. **Execution Layer**: Runs generated code with Bun runtime
+1. **MCP Client Layer**  
+   Manages STDIO/HTTP connections to MCP servers and routes requests/responses.
 
-### Generated Code Structure
+2. **Code Generation Layer**  
+   Converts MCP tool definitions into TypeScript `.d.ts` files and a capability-aware runtime.
 
-MCPaC generates a hierarchical type system with a capability-based runtime:
+3. **Execution Layer**  
+   Uses Bun to execute TypeScript/JavaScript code and injects the `runtime` object.
 
-**Hierarchical Type Structure:**
-```
+Generated code structure:
+
+```text
 servers/
 ├── _mcpac_runtime.ts       # Runtime implementation (IPC, capability system)
-├── _types.d.ts             # Lightweight type aggregator (McpServers interface)
-├── global.d.ts             # MCPaC ambient namespace (no import needed!)
+├── _types.d.ts             # Root types (McpServers, McpRequires, etc.)
+├── global.d.ts             # Ambient MCPaC namespace for mcpac execute
 └── <serverName>/
     ├── index.d.ts          # Server-level type definitions
-    ├── <tool1>.d.ts        # Individual tool type definitions
+    ├── <tool1>.d.ts        # Individual tool definitions
     └── <tool2>.d.ts
 ```
 
-**MCPaC Ambient Namespace** (`servers/global.d.ts`):
-```typescript
-declare namespace MCPaC {
-  export type McpRequires<T extends readonly string[]> =
-    import('./_types.d.ts').McpRequires<T>;
-}
-```
-
-**User Code** (recommended - MCPaC namespace):
-```typescript
-// No import needed - MCPaC namespace is ambient!
-declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
-
-// Use runtime to call MCP tools
-const result = await runtime.filesystem.readFile({ path: 'data.txt' });
-```
-
-**Alternative** (explicit import):
-```typescript
-import type { McpRequires } from './servers/_types.js';
-declare const runtime: McpRequires<['filesystem.readFile']>;
-```
-
-**Permission Format**: `server.toolName` (camelCase), e.g., `filesystem.readFile`, `github.createIssue`
+---
 
 ## Development
 
@@ -472,82 +530,89 @@ declare const runtime: McpRequires<['filesystem.readFile']>;
 
 - [Bun](https://bun.sh/) >= 1.0
 
-### Commands
+### Useful commands
 
 ```bash
-# Development
+# Development wrapper
 bun run dev <command>
 
 # Type checking
 bun run typecheck
 
-# Linting & Formatting
-bun run check          # Auto-fix
-bun run check:ci       # CI mode
+# Linting & formatting
+bun run check       # Auto-fix
+bun run check:ci    # CI mode
 
-# Testing
-bun test               # All tests
-bun test tests/unit    # Unit tests
-bun test tests/e2e     # E2E tests
+# Tests
+bun test            # All tests
+bun test tests/unit
+bun test tests/e2e
 
-# Building
-bun run build          # Build binary
-bun run build:all      # Build for all platforms
-bun run clean          # Clean build artifacts
+# Build
+bun run build       # Build binary
+bun run build:all   # Build for all platforms
+bun run clean       # Clean artifacts
 ```
+
+---
 
 ## Limitations
 
-- Generated code uses hierarchical `.d.ts` type definitions (executed by Bun)
-- MCP server must be accessible at code generation and execution time
+- Executed code currently assumes Bun as the runtime
+- MCP server must be reachable at both:
+  - Code generation time (for type generation)
+  - Execution time (for actual calls)
+- The current MCP protocol typically describes input schemas but not the full shape of tool responses (e.g. JSON structures embedded inside `text` content blocks), so MCPaC cannot always generate precise response types beyond `ContentBlock`; agents may still need to infer or learn response shapes from documentation or examples
 - HTTP transport does not support SSE streaming yet
-- Windows binary may trigger antivirus warnings (false positive)
+- Windows binary may trigger antivirus warnings (false positives)
+
+---
 
 ## Troubleshooting
 
-### "Server not found" error
+### "Server not found"
 
 ```bash
-# Check configured servers
 mcpac server list
-
-# Test connection
 mcpac server test <name>
 ```
 
 ### Type check errors
 
 ```bash
-# Skip type checking
+# Skip type checking (for quick debugging)
 mcpac execute -f script.ts --no-typecheck
 
-# View generated types
+# Inspect the generated types for a tool
 mcpac tools describe <function_name>
 ```
 
 ### Connection issues
 
 ```bash
-# Verbose mode to see MCP server logs
+# See detailed MCP logs
 mcpac execute -f script.ts -v
 
-# Check MCP server stderr output
+# Check the MCP server's stderr output
 ```
+
+---
 
 ## Resources
 
 - [MCP Specification](https://spec.modelcontextprotocol.io/)
 - [Official MCP Servers](https://github.com/modelcontextprotocol/servers)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+- Anthropic blog: *Code execution with MCP: Building more efficient agents*
 
-## Inspiration
-
-This project is inspired by Anthropic's blog post: [Code execution with MCP: Building more efficient agents](https://www.anthropic.com/engineering/code-execution-with-mcp)
+---
 
 ## License
 
 MIT
 
+---
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to open issues or submit pull requests.
