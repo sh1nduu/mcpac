@@ -24,6 +24,7 @@ MCPaC is a tool that converts Model Context Protocol (MCP) servers into TypeScri
 
 - 🚀 **TypeScript Code Generation from MCP Servers**: Automatically convert tool definitions into type-safe APIs
 - 💻 **Code Execution Environment**: Execute code using generated MCP libraries
+- 🔐 **Capability-Based Permission System**: Explicit permission declarations with type safety
 - 🔧 **Server Management**: Easily manage multiple MCP servers
 - 🌐 **Multiple Transport Support**: Support both STDIO (local process) and HTTP (remote server)
 - 🔍 **Tool Exploration**: Explore available functions and type definitions via CLI
@@ -156,10 +157,13 @@ filesystem.writeFile
 
 Create `example.ts`:
 ```typescript
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
+
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
 
 // Read file
-const result = await filesystem.readFile({
+const result = await runtime.filesystem.readFile({
   path: 'example.txt'
 });
 
@@ -168,16 +172,17 @@ const content = result.content.find(c => c.type === 'text')?.text;
 console.log('File content:', content);
 
 // Write file
-await filesystem.writeFile({
+await runtime.filesystem.writeFile({
   path: 'output.txt',
   content: 'Hello from MCPaC!'
 });
 ```
 
-### 5. Execute Code
+### 5. Execute Code with Permissions
 
 ```bash
-mcpac execute -f example.ts
+# Grant required permissions when executing
+mcpac execute -f example.ts --grant filesystem.readFile,filesystem.writeFile
 ```
 
 ## Usage
@@ -277,24 +282,41 @@ mcpac tools call readFile --path example.txt -v
 ### Code Execution
 
 ```bash
-# Execute from file
-mcpac execute -f <file.ts>
+# Execute from file with permissions
+mcpac execute -f <file.ts> --grant server.tool1,server.tool2
 
 # Execute inline code
-mcpac execute -c "import {filesystem} from './servers'; ..."
+mcpac execute -c "..." --grant filesystem.readFile
 
 # Execute from stdin
-cat script.ts | mcpac execute --stdin
+cat script.ts | mcpac execute --stdin --grant filesystem.readFile
 
 # Skip type checking
-mcpac execute -f script.ts --no-typecheck
+mcpac execute -f script.ts --no-typecheck --grant filesystem.readFile
 
 # Quiet mode (suppress non-critical output)
-mcpac execute -f script.ts -q
+mcpac execute -f script.ts -q --grant filesystem.readFile
 
 # Verbose mode (show MCP server logs)
-mcpac execute -f script.ts -v
+mcpac execute -f script.ts -v --grant filesystem.readFile
 ```
+
+**Permission System:**
+
+Your code must explicitly declare required permissions:
+
+```typescript
+import type { McpRequires } from './servers/_types.js';
+declare const runtime: McpRequires<['server.tool1', 'server.tool2']>;
+```
+
+Then grant those permissions at execution time with `--grant`:
+
+```bash
+mcpac execute -f script.ts --grant server.tool1,server.tool2
+```
+
+If required permissions don't match granted permissions, execution will fail with a clear error message.
 
 ### Information Commands
 
@@ -315,16 +337,24 @@ mcpac <command> --help
 ### Example 1: File Operations
 
 ```typescript
-import { filesystem } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
+
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.listDirectory', 'filesystem.readFile']>;
 
 // List directory
-const dirResult = await filesystem.listDirectory({ path: '.' });
+const dirResult = await runtime.filesystem.listDirectory({ path: '.' });
 console.log(dirResult.content[0].text);
 
 // Read file
-const fileResult = await filesystem.readFile({ path: 'README.md' });
+const fileResult = await runtime.filesystem.readFile({ path: 'README.md' });
 const content = fileResult.content.find(c => c.type === 'text')?.text;
 console.log('Content length:', content?.length);
+```
+
+Run with:
+```bash
+mcpac execute -f script.ts --grant filesystem.listDirectory,filesystem.readFile
 ```
 
 ### Example 2: GitHub Integration
@@ -341,10 +371,13 @@ mcpac generate
 ```
 
 ```typescript
-import { github } from './servers/index.js';
+import type { McpRequires } from './servers/_types.js';
+
+// Declare required permissions
+declare const runtime: McpRequires<['github.createIssue']>;
 
 // Create issue
-const result = await github.createIssue({
+const result = await runtime.github.createIssue({
   owner: 'username',
   repo: 'repository',
   title: 'Bug Report',
@@ -352,6 +385,11 @@ const result = await github.createIssue({
 });
 
 console.log('Created issue:', result.content[0].text);
+```
+
+Run with:
+```bash
+mcpac execute -f script.ts --grant github.createIssue
 ```
 
 ### Example 3: HTTP Transport
@@ -384,28 +422,36 @@ mcpac consists of three main layers:
 
 ### Generated Code Structure
 
-Generated code follows this pattern:
+MCPaC generates TypeScript definitions and a capability-based runtime:
 
+**Type Definitions** (`servers/_types.ts`):
 ```typescript
-// Input type (auto-generated from JSON Schema)
-export interface ReadFileInput {
-  path: string;
+// Server interface with all tools
+export interface McpServers {
+  filesystem: {
+    readFile(args: ReadFileInput): Promise<ReadFileOutput>;
+    writeFile(args: WriteFileInput): Promise<WriteFileOutput>;
+    // ...
+  };
 }
 
-// Output type (extends MCPToolResult)
-export interface ReadFileOutput extends MCPToolResult {}
-
-// Function implementation
-export async function readFile(
-  input: ReadFileInput
-): Promise<ReadFileOutput> {
-  return await callMCPTool<ReadFileOutput>(
-    'filesystem',
-    'read_file',
-    input
-  );
-}
+// Permission type for explicit declarations
+export type McpRequires<T extends readonly PermissionId[]> =
+  PickNamespacedRuntime<T, PermissionId, Methods>;
 ```
+
+**User Code** (with explicit permission declarations):
+```typescript
+import type { McpRequires } from './servers/_types.js';
+
+// Declare required permissions
+declare const runtime: McpRequires<['filesystem.readFile']>;
+
+// Use runtime to call MCP tools
+const result = await runtime.filesystem.readFile({ path: 'data.txt' });
+```
+
+**Permission Format**: `server.toolName` (camelCase), e.g., `filesystem.readFile`, `github.createIssue`
 
 ## Development
 
