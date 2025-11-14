@@ -147,8 +147,8 @@ describe('CodeGenerator', () => {
     expect(generatedCode.functionCode).toContain('Promise<ReadFileOutput>');
   });
 
-  test('should generate runtime shim', () => {
-    const runtime = generator.generateRuntimeShim([]);
+  test('should generate runtime shim', async () => {
+    const runtime = await generator.generateRuntimeShim([]);
 
     // Check runtime contains necessary components for IPC mode
     expect(runtime).toContain('export async function callMCPTool');

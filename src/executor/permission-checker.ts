@@ -204,13 +204,19 @@ export class PermissionChecker {
         if (!byServer.has('other')) {
           byServer.set('other', []);
         }
-        byServer.get('other')!.push(perm);
+        const otherPerms = byServer.get('other');
+        if (otherPerms) {
+          otherPerms.push(perm);
+        }
       } else {
         const server = perm.slice(0, dotIndex);
         if (!byServer.has(server)) {
           byServer.set(server, []);
         }
-        byServer.get(server)!.push(perm);
+        const serverPerms = byServer.get(server);
+        if (serverPerms) {
+          serverPerms.push(perm);
+        }
       }
     }
 
