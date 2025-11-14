@@ -201,12 +201,14 @@ export class IPCExecutor {
    * Execute TypeScript code string with IPC-based MCP communication
    */
   async executeCode(code: string, options: IPCExecuteOptions): Promise<ExecutionResult> {
-    // Create temporary file
+    // Create temporary file in workspace directory (not tmpdir) to ensure relative imports work
     const { writeFile, unlink } = await import('node:fs/promises');
     const { join } = await import('node:path');
-    const { tmpdir } = await import('node:os');
 
-    const tempFile = join(tmpdir(), `.mcpac-temp-${process.pid}-${Date.now()}.ts`);
+    const tempFile = join(
+      options.context.workspaceDir,
+      `.mcpac-temp-${process.pid}-${Date.now()}.ts`,
+    );
 
     try {
       await writeFile(tempFile, code, 'utf-8');

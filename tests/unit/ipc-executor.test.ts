@@ -4,6 +4,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { ContextManager } from '../../src/executor/context.js';
 import { IPCExecutor } from '../../src/executor/ipc-executor.js';
 import { ResultHandler } from '../../src/executor/result.js';
+import { Generator } from '../../src/generator/index.js';
 import { MCPManager } from '../../src/mcp/manager.js';
 
 const TEST_CONFIG_PATH = './tests/unit/test-ipc-executor-config.json';
@@ -43,6 +44,10 @@ describe('IPCExecutor', () => {
     contextMgr = new ContextManager(manager);
     executor = new IPCExecutor();
     resultHandler = new ResultHandler();
+
+    // Generate code for the test server (creates servers/ directory with runtime in workspace)
+    const generator = new Generator(manager, { outputDir: `${TEST_WORKSPACE}/servers` });
+    await generator.generateAll();
   }, 30000); // 30 second timeout for CI environments (npx package installation)
 
   afterAll(async () => {
@@ -53,7 +58,7 @@ describe('IPCExecutor', () => {
       await rm(TEST_CONFIG_PATH);
     }
     if (existsSync(TEST_WORKSPACE)) {
-      await rm(TEST_WORKSPACE, { recursive: true });
+      await rm(TEST_WORKSPACE, { recursive: true }); // This also removes generated code
     }
   }, 10000); // 10 second timeout for cleanup
 
@@ -73,6 +78,7 @@ describe('IPCExecutor', () => {
     const result = await executor.executeCode(code, {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
 
@@ -90,6 +96,7 @@ describe('IPCExecutor', () => {
     const result = await executor.executeFile(testFile, {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
 
@@ -105,6 +112,7 @@ describe('IPCExecutor', () => {
     const result = await executor.executeCode(code, {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
 
@@ -120,6 +128,7 @@ describe('IPCExecutor', () => {
     const result = await executor.executeCode(code, {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 100,
     });
 
@@ -138,6 +147,7 @@ describe('IPCExecutor', () => {
     const result = await executor.executeCode(code, {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
 
@@ -152,6 +162,7 @@ describe('IPCExecutor', () => {
     const successResult = await executor.executeCode('console.log("ok");', {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
     expect(resultHandler.getExitCode(successResult)).toBe(0);
@@ -160,6 +171,7 @@ describe('IPCExecutor', () => {
     const errorResult = await executor.executeCode('process.exit(42);', {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
     expect(resultHandler.getExitCode(errorResult)).toBe(42);
@@ -180,6 +192,7 @@ describe('IPCExecutor', () => {
     const result = await executor.executeCode(code, {
       mcpManager: manager,
       context,
+      grantedPermissions: [],
       timeout: 10000,
     });
 
