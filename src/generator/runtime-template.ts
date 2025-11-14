@@ -356,4 +356,205 @@ export async function callMCPTool<T = unknown>(
     throw new Error(\`Unknown error calling \${serverName}.\${toolName}: \${String(error)}\`);
   }
 }
+
+// ============================================================================
+// Capability-Based Permission System
+// ============================================================================
+
+/**
+ * Full runtime interface with utility methods for permission inspection.
+ */
+export interface FullRuntime<
+  P extends string,
+  _Methods extends Record<P, (...args: any[]) => any>
+> {
+  getPermissions(): readonly P[];
+  has<Perm extends P>(perm: Perm): boolean;
+}
+
+/**
+ * Helper type to flatten one server's methods into "server.tool" format
+ */
+type FlattenServer<ServerName extends string, Tools> = {
+  [Tool in keyof Tools & string as \`\${ServerName}.\${Tool}\`]: Tools[Tool];
+};
+
+/**
+ * Union to Intersection helper type
+ */
+type UnionToIntersection<U> =
+  (U extends any ? (x: U) => void : never) extends ((x: infer I) => void) ? I : never;
+
+/**
+ * Convert nested server/tool structure to flat "server.tool" method map.
+ */
+export type MethodsFromServers<Servers> =
+  UnionToIntersection<
+    {
+      [Server in keyof Servers & string]: FlattenServer<Server, Servers[Server]>
+    }[keyof Servers & string]
+  >;
+
+/**
+ * Extract server names from flat "server.tool" keys
+ */
+type ServerNames<M> =
+  keyof M & string extends infer K
+    ? K extends \`\${infer S}.\${string}\` ? S : never
+    : never;
+
+/**
+ * Extract tool names for a specific server from "server.tool" keys
+ */
+type MethodsForServer<M, S extends string> =
+  keyof M & string extends infer K
+    ? K extends \`\${S}.\${infer Tool}\` ? Tool : never
+    : never;
+
+/**
+ * Filter Methods to only include keys that are in the Perms array
+ */
+type FilterMethods<
+  M extends Record<string, any>,
+  Perms extends readonly string[]
+> = {
+  [K in keyof M as K extends Perms[number] ? K : never]: M[K];
+};
+
+/**
+ * Transform flat "server.tool" methods into nested { server: { tool: method } } structure
+ */
+type GroupByServer<M extends Record<string, any>> = {
+  [S in ServerNames<M>]: {
+    [Tool in MethodsForServer<M, S>]: M[\`\${S}.\${Tool}\`];
+  };
+};
+
+/**
+ * Create a namespaced runtime type with nested server.tool() access.
+ */
+export type PickNamespacedRuntime<
+  Perms extends readonly string[],
+  P extends string,
+  Methods extends Record<string, (...args: any[]) => any>
+> =
+  GroupByServer<FilterMethods<Methods, Perms>> &
+  FullRuntime<P, Methods & Record<P, (...args: any[]) => any>>;
+
+/**
+ * Secret symbol for runtime verification
+ */
+const RuntimeSecret = Symbol('RuntimeSecret');
+
+/**
+ * NamespacedRuntimeAuthority manages namespaced permission grants with MCP-style syntax.
+ * Permission IDs are flat strings ("server.tool") but runtime provides nested access.
+ */
+export class NamespacedRuntimeAuthority<
+  P extends string,
+  Methods extends Record<P, (...args: any[]) => any>
+> {
+  private readonly secretKey: string;
+  private readonly methodImplementations: Methods;
+
+  constructor(methodImplementations: Methods) {
+    this.secretKey = crypto.randomUUID();
+    this.methodImplementations = methodImplementations;
+  }
+
+  grant<T extends readonly P[]>(
+    ...permissions: T
+  ): PickNamespacedRuntime<T, P, Methods> {
+    return this.createNamespacedRuntime([...permissions]);
+  }
+
+  verify(obj: any): boolean {
+    return obj && obj[RuntimeSecret] === this.secretKey;
+  }
+
+  private createNamespacedRuntime(permissions: P[]): PickNamespacedRuntime<readonly P[], P, Methods> {
+    const self = this;
+
+    const baseObj: any = {
+      [RuntimeSecret]: this.secretKey,
+
+      getPermissions(): readonly P[] {
+        return permissions;
+      },
+
+      has<Perm extends P>(perm: Perm): boolean {
+        return permissions.includes(perm);
+      },
+    };
+
+    // Validate granted permissions format
+    for (const perm of permissions) {
+      const permStr = String(perm);
+      if (permStr.indexOf('.') === -1) {
+        throw new Error(
+          \`Invalid namespaced permission: "\${permStr}". Expected format: "server.tool"\`
+        );
+      }
+    }
+
+    // Create nested structure for ALL methods (not just granted ones)
+    for (const [permStr, implementation] of Object.entries(this.methodImplementations)) {
+      const perm = permStr as P;
+      const dotIndex = permStr.indexOf('.');
+
+      if (dotIndex === -1) {
+        continue; // Skip methods without proper namespace format
+      }
+
+      const server = permStr.slice(0, dotIndex);
+      const tool = permStr.slice(dotIndex + 1);
+
+      // Create server namespace if it doesn't exist
+      if (!baseObj[server]) {
+        baseObj[server] = {};
+      }
+
+      // Add the method wrapper (with permission check)
+      baseObj[server][tool] = ((...args: any[]) => {
+        // Verify runtime integrity
+        if (!self.verify(runtimeObj)) {
+          throw new Error('Invalid runtime: verification failed');
+        }
+
+        // Check permission
+        if (!permissions.includes(perm)) {
+          throw new Error(
+            \`Missing permission: \${String(perm)} (granted: [\${permissions.join(', ')}])\`
+          );
+        }
+
+        // Call the actual implementation
+        return (implementation as (...args: any[]) => any)(...args);
+      });
+    }
+
+    // Freeze all nested server objects
+    for (const key of Object.keys(baseObj)) {
+      if (key !== RuntimeSecret.toString() && typeof baseObj[key] === 'object' && baseObj[key] !== null) {
+        Object.freeze(baseObj[key]);
+      }
+    }
+
+    // Freeze the root object
+    const runtimeObj = Object.freeze(baseObj) as PickNamespacedRuntime<readonly P[], P, Methods>;
+
+    return runtimeObj;
+  }
+}
+
+/**
+ * Create a capability runtime with granted permissions.
+ * This function is called by the executor with permissions extracted from user code.
+ *
+ * Note: This is a placeholder that will be replaced by generated code that knows
+ * about the specific servers and tools available.
+ */
+export function createRuntime(permissions: string[]): any {
+  throw new Error('createRuntime() must be called after code generation. Run "mcpac generate" first.');
+}
 `;
