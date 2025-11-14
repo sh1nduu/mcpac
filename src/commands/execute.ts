@@ -14,7 +14,7 @@ export function executeCommand(program: Command): void {
     .option('-f, --file <path>', 'Execute code from file')
     .option('-c, --code <code>', 'Execute code string')
     .option('--stdin', 'Read code from stdin')
-    .option('-w, --workspace <dir>', 'Workspace directory', './workspace')
+    .option('-w, --workspace <dir>', 'Workspace directory', '.')
     .option(
       '--grant <permissions>',
       'Grant permissions (comma-separated, e.g., "filesystem.read_file,filesystem.write_file")',
