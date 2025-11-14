@@ -97,24 +97,8 @@ export class CodeGenerator {
     lines.push(' * @returns Runtime object with granted permissions');
     lines.push(' */');
     lines.push('export function createRuntime(permissions: string[]): any {');
-    lines.push('  // Helper function to convert camelCase permission IDs to snake_case tool names');
-    lines.push('  // e.g., "filesystem.readFile" -> "filesystem.read_file"');
-    lines.push('  function permissionToToolFormat(perm: string): string {');
-    lines.push('    const [server, ...toolParts] = perm.split(".");');
-    lines.push('    if (toolParts.length === 0) return perm;');
-    lines.push('');
-    lines.push('    const camelTool = toolParts.join(".");');
-    lines.push('    const snakeTool = camelTool.replace(/([A-Z])/g, "_$1").toLowerCase();');
-    lines.push('    return `$' + '{server}.$' + '{snakeTool}`;');
-    lines.push('  }');
-    lines.push('');
-    lines.push('  // Convert camelCase permissions to snake_case for IPC server compatibility');
-    lines.push('  const snakeCasePermissions = permissions.map(permissionToToolFormat);');
-    lines.push('');
-    lines.push('  // Set permission context for IPC requests (in snake_case format)');
-    lines.push('  setPermissionContext(snakeCasePermissions);');
-    lines.push('');
     lines.push('  // Create method implementations that call MCP tools via IPC');
+    lines.push('  // Permission checks are performed by host-side IPCServer');
     lines.push('  const methodImplementations: Record<string, (...args: any[]) => any> = {');
 
     // Generate method implementations for each tool

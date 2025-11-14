@@ -202,7 +202,6 @@ class IPCClient {
     serverName: string,
     toolName: string,
     args: Record<string, unknown>,
-    grantedPermissions?: string[],
   ): Promise<MCPToolResult> {
     if (!this.connected) {
       await this.connect();
@@ -217,7 +216,6 @@ class IPCClient {
         server: serverName,
         tool: toolName,
         arguments: args,
-        grantedPermissions,
       },
     };
 
@@ -285,28 +283,6 @@ class IPCClient {
 }
 
 /**
- * Permission context for capability-based security
- * Stores the granted permissions for the current runtime instance
- */
-let grantedPermissionsContext: string[] | null = null;
-
-/**
- * Set the granted permissions context
- * Called by createRuntime() to establish the permission boundary
- */
-export function setPermissionContext(permissions: string[]): void {
-  grantedPermissionsContext = permissions;
-  debugLog(`Permission context set: [${permissions.join(', ')}]`);
-}
-
-/**
- * Get the current granted permissions
- */
-function getGrantedPermissions(): string[] | undefined {
-  return grantedPermissionsContext ?? undefined;
-}
-
-/**
  * MCP Manager implementation
  * Singleton wrapper for IPC client
  */
@@ -345,11 +321,15 @@ class MCPManager {
  * Call an MCP tool via IPC
  * This is the main function used by generated code to invoke MCP tools
  *
+ * Permission checks are performed by the host-side IPCServer, not here.
+ * This simplifies the user-side code while maintaining security through
+ * the trust boundary (parent process enforces permissions).
+ *
  * @param serverName - Name of the MCP server
  * @param toolName - Name of the tool to call
  * @param input - Input parameters for the tool
  * @returns The tool's response
- * @throws Error if the tool call fails
+ * @throws Error if the tool call fails or permission is denied
  */
 export async function callMCPTool<T = unknown>(
   serverName: string,
@@ -357,11 +337,10 @@ export async function callMCPTool<T = unknown>(
   input: Record<string, unknown>,
 ): Promise<T> {
   const manager = MCPManager.getInstance();
-  const grantedPermissions = getGrantedPermissions();
 
   try {
     const client = await manager.getClient();
-    const result = await client.callTool(serverName, toolName, input, grantedPermissions);
+    const result = await client.callTool(serverName, toolName, input);
 
     if (result.isError) {
       throw new Error(
@@ -572,12 +551,15 @@ export class NamespacedRuntimeAuthority<
  * Create a capability runtime with granted permissions.
  * This function is called by the runtime injector with permissions extracted from user code.
  *
+ * Permission enforcement happens on the host side (IPCServer), not here.
+ * This function creates a runtime object that provides type-safe access to tools,
+ * but actual permission checks occur when tools are called via IPC.
+ *
  * Implementation requirements:
- * 1. Call setPermissionContext(permissions) to establish permission boundary
- * 2. Create methodImplementations mapping "server.tool" to callMCPTool wrappers
- * 3. Create NamespacedRuntimeAuthority instance with methodImplementations
- * 4. Call authority.grant(...permissions) to create the runtime object
- * 5. Return the runtime object
+ * 1. Create methodImplementations mapping "server.tool" to callMCPTool wrappers
+ * 2. Create NamespacedRuntimeAuthority instance with methodImplementations
+ * 3. Call authority.grant(...permissions) to create the runtime object
+ * 4. Return the runtime object
  *
  * Note: This is a placeholder that will be replaced by generated code that knows
  * about the specific servers and tools available.

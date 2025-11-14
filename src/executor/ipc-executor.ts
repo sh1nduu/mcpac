@@ -26,6 +26,24 @@ function debugError(...args: unknown[]): void {
   }
 }
 
+/**
+ * Convert camelCase permission IDs to snake_case format for MCP tool names
+ * e.g., "filesystem.readFile" -> "filesystem.read_file"
+ *
+ * This is needed because:
+ * - CLI and user code use camelCase: filesystem.readFile
+ * - MCP tool names are snake_case: read_file
+ * - IPCServer constructs permission IDs from tool names: filesystem.read_file
+ */
+function permissionToSnakeCase(permission: string): string {
+  const [server, ...toolParts] = permission.split('.');
+  if (toolParts.length === 0) return permission;
+
+  const camelTool = toolParts.join('.');
+  const snakeTool = camelTool.replace(/([A-Z])/g, '_$1').toLowerCase();
+  return `${server}.${snakeTool}`;
+}
+
 export interface IPCExecuteOptions {
   mcpManager: MCPManager;
   context: ExecutionContext;
@@ -107,8 +125,12 @@ export class IPCExecutor {
       await writeFile(tempFile, modifiedCode, 'utf-8');
       debugLog(`Modified code written to ${tempFile}`);
 
+      // Convert permissions to snake_case for MCP tool name matching
+      const snakeCasePermissions = grantedPermissions.map(permissionToSnakeCase);
+      debugLog(`Converted permissions to snake_case:`, snakeCasePermissions);
+
       // Create IPC server with trusted permissions from host side
-      const ipcServer = new IPCServer(options.mcpManager, undefined, grantedPermissions);
+      const ipcServer = new IPCServer(options.mcpManager, undefined, snakeCasePermissions);
 
       try {
         // Start IPC server
@@ -287,7 +309,11 @@ export class IPCExecutor {
       await writeFile(tempFile, modifiedCode, 'utf-8');
       debugLog(`Modified code written to ${tempFile}`);
 
-      const ipcServer = new IPCServer(options.mcpManager, undefined, grantedPermissions);
+      // Convert permissions to snake_case for MCP tool name matching
+      const snakeCasePermissions = grantedPermissions.map(permissionToSnakeCase);
+      debugLog(`Converted permissions to snake_case:`, snakeCasePermissions);
+
+      const ipcServer = new IPCServer(options.mcpManager, undefined, snakeCasePermissions);
 
       try {
         await ipcServer.start();
