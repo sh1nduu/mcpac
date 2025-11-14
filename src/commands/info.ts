@@ -141,9 +141,10 @@ Configured Servers: ${serverNames.length}`);
             console.log('  Run: mcpac generate');
           }
         } else {
-          console.log("\n💡 Next: Run 'mcpac tools list' to explore available tools");
+          console.log("\n💡 Next: Run 'mcpac tools list -s <server>' to explore server tools");
+          console.log("   Or: 'mcpac tools list' to see all available tools");
           console.log("   Try: 'mcpac tools call <name>' for quick tool invocation");
-          console.log("   Or: 'mcpac getting-started' for complete usage guide");
+          console.log("   Guide: 'mcpac getting-started' for complete usage guide");
         }
       }
     } catch (error) {

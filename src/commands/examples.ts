@@ -155,6 +155,7 @@ Execute from stdin:
 
 💡 Tip: All examples assume you have the 'filesystem' server configured
     Run 'mcpac info' to see your configured servers
-    Run 'mcpac tools list' to see available tools and their functions
+    Run 'mcpac tools list -s filesystem' to see filesystem tools
+    Run 'mcpac tools list' to see all available tools
 `);
   });

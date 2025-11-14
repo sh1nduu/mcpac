@@ -21,28 +21,31 @@ MCPaC converts MCP servers into TypeScript libraries that you can execute as cod
    $ mcpac generate
 
 3️⃣  Explore Available Tools (Optional)
+   $ mcpac tools list -s filesystem          # See functions for specific server
    $ mcpac tools list                        # See all functions
    $ mcpac tools describe listDirectory      # View function details
    $ mcpac tools call readFile --path ./README.md  # Call tool directly
 
 4️⃣  Execute Code with MCP Tools
    $ mcpac execute -c "
-     import { filesystem } from './servers/index.js';
-     const result = await filesystem.listDirectory({ path: '.' });
+     import type { McpRequires } from './servers/_types.js';
+     declare const runtime: McpRequires<['filesystem.listDirectory']>;
+     const result = await runtime.filesystem.listDirectory({ path: '.' });
      console.log(result.content[0].text);
-   "
+   " --grant filesystem.listDirectory
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## Available MCP Servers
+## Reference MCP Servers
 
-Official MCP servers you can use:
-  • @modelcontextprotocol/server-filesystem - File system operations
-  • @modelcontextprotocol/server-github - GitHub API access
-  • @modelcontextprotocol/server-postgres - PostgreSQL database
-  • @modelcontextprotocol/server-sqlite - SQLite database
-  • @modelcontextprotocol/server-brave-search - Web search via Brave
-  • @modelcontextprotocol/server-google-maps - Google Maps API
+Official reference servers demonstrating MCP features:
+  • Everything - Reference/test server with prompts, resources, and tools
+  • Fetch - Web content fetching and conversion for efficient LLM usage
+  • Filesystem - Secure file operations with configurable access controls
+  • Git - Tools to read, search, and manipulate Git repositories
+  • Memory - Knowledge graph-based persistent memory system
+  • Sequential Thinking - Dynamic and reflective problem-solving
+  • Time - Time and timezone conversion capabilities
 
 Find more servers at: https://github.com/modelcontextprotocol/servers
 
@@ -52,6 +55,7 @@ Find more servers at: https://github.com/modelcontextprotocol/servers
 
 After running 'mcpac generate', you'll have:
   • servers/_mcpac_runtime.ts - Runtime library for MCP communication
+  • servers/_types.ts - Type definitions and McpRequires helper
   • servers/<server-name>/*.ts - Type-safe tool functions
   • servers/index.ts - Main exports
 
@@ -61,8 +65,11 @@ All generated functions return MCP tool call results with this structure:
     isError: boolean
   }
 
-Example usage:
-  const result = await filesystem.readFile({ path: './data.txt' });
+Example usage (with required permission declarations):
+  import type { McpRequires } from './servers/_types.js';
+  declare const runtime: McpRequires<['filesystem.readFile']>;
+
+  const result = await runtime.filesystem.readFile({ path: './data.txt' });
   const text = result.content.find(c => c.type === 'text')?.text;
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
