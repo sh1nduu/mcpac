@@ -1,6 +1,7 @@
 import { compile } from 'json-schema-to-typescript';
 import { VERSION } from '../version.js';
 import type { ToolDefinition } from './parser.js';
+import { loadRuntimeTemplate } from './templates/loadTemplate.macro.ts' with { type: 'macro' };
 
 export interface GeneratedCode {
   imports: string;
@@ -45,12 +46,11 @@ export class CodeGenerator {
    * Placed as servers/_mcpac_runtime.ts
    * @param allTools - All tool definitions for generating createRuntime implementation
    */
-  async generateRuntimeShim(allTools: ToolDefinition[]): Promise<string> {
-    // Load template from file using Bun.file()
-    // Use import.meta.dir to get the directory path and construct template path
-    const { join } = await import('node:path');
-    const templatePath = join(import.meta.dir, 'templates', 'runtime-base.template.ts');
-    const templateContent = await Bun.file(templatePath).text();
+  generateRuntimeShim(allTools: ToolDefinition[]): string {
+    // Load template at bundle-time using Bun macro
+    // The template content is inlined directly into the bundle (like Rust's include_str!)
+    // This allows the single executable to work without filesystem access
+    const templateContent = loadRuntimeTemplate();
 
     // Replace version placeholders in the template
     let runtimeCode = templateContent

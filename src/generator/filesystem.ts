@@ -58,7 +58,7 @@ export class FilesystemManager {
     const codegen = new CodeGenerator();
     const runtimePath = join(this.outputDir, '_mcpac_runtime.ts');
 
-    const runtimeCode = await codegen.generateRuntimeShim([]);
+    const runtimeCode = codegen.generateRuntimeShim([]);
     await writeFile(runtimePath, runtimeCode, 'utf-8');
     this.runtimeGenerated = true;
   }
@@ -73,7 +73,7 @@ export class FilesystemManager {
     const codegen = new CodeGenerator();
     const runtimePath = join(this.outputDir, '_mcpac_runtime.ts');
 
-    const runtimeCode = await codegen.generateRuntimeShim(allTools);
+    const runtimeCode = codegen.generateRuntimeShim(allTools);
     await writeFile(runtimePath, runtimeCode, 'utf-8');
     this.runtimeGenerated = true;
   }
