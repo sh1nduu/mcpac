@@ -1,7 +1,13 @@
 import { IPCServer } from '../ipc/server.js';
 import type { MCPManager } from '../mcp/manager.js';
 import type { ExecutionContext } from './context.js';
-import type { ExecutionResult } from './runner.js';
+
+export interface ExecutionResult {
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  error?: Error;
+}
 
 const DEBUG = process.env.MCPAC_DEBUG === '1';
 

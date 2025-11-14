@@ -2,18 +2,18 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { ContextManager } from '../../src/executor/context.js';
+import { IPCExecutor } from '../../src/executor/ipc-executor.js';
 import { ResultHandler } from '../../src/executor/result.js';
-import { CodeRunner } from '../../src/executor/runner.js';
 import { MCPManager } from '../../src/mcp/manager.js';
 
-const TEST_CONFIG_PATH = './tests/unit/test-executor-config.json';
+const TEST_CONFIG_PATH = './tests/unit/test-ipc-executor-config.json';
 const TEST_WORKSPACE = './tests/unit/workspace';
 const TEST_SERVER_NAME = 'test-filesystem';
 
-describe('CodeRunner', () => {
+describe('IPCExecutor', () => {
   let manager: MCPManager;
   let contextMgr: ContextManager;
-  let runner: CodeRunner;
+  let executor: IPCExecutor;
   let resultHandler: ResultHandler;
 
   beforeAll(async () => {
@@ -41,7 +41,7 @@ describe('CodeRunner', () => {
     // Initialize components
     manager = MCPManager.getInstance(TEST_CONFIG_PATH);
     contextMgr = new ContextManager(manager);
-    runner = new CodeRunner();
+    executor = new IPCExecutor();
     resultHandler = new ResultHandler();
   }, 30000); // 30 second timeout for CI environments (npx package installation)
 
@@ -68,12 +68,16 @@ describe('CodeRunner', () => {
 
   test('should execute simple code successfully', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
-    const code = 'console.log("Hello from test");';
+    const code = 'console.log("Hello from IPC test");';
 
-    const result = await runner.executeCode(code, { context, timeout: 5000 });
+    const result = await executor.executeCode(code, {
+      mcpManager: manager,
+      context,
+      timeout: 10000,
+    });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Hello from test');
+    expect(result.stdout).toContain('Hello from IPC test');
     expect(resultHandler.isSuccess(result)).toBe(true);
   });
 
@@ -81,12 +85,16 @@ describe('CodeRunner', () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
     const testFile = `${TEST_WORKSPACE}/test-script.ts`;
 
-    await writeFile(testFile, 'console.log("File execution test");');
+    await writeFile(testFile, 'console.log("IPC file execution test");');
 
-    const result = await runner.executeFile(testFile, { context, timeout: 5000 });
+    const result = await executor.executeFile(testFile, {
+      mcpManager: manager,
+      context,
+      timeout: 10000,
+    });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('File execution test');
+    expect(result.stdout).toContain('IPC file execution test');
     expect(resultHandler.isSuccess(result)).toBe(true);
   });
 
@@ -94,7 +102,11 @@ describe('CodeRunner', () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
     const code = 'throw new Error("Test error");';
 
-    const result = await runner.executeCode(code, { context, timeout: 5000 });
+    const result = await executor.executeCode(code, {
+      mcpManager: manager,
+      context,
+      timeout: 10000,
+    });
 
     expect(result.exitCode).not.toBe(0);
     expect(resultHandler.isSuccess(result)).toBe(false);
@@ -105,7 +117,11 @@ describe('CodeRunner', () => {
     // Create code that runs longer than timeout
     const code = 'await Bun.sleep(10000); console.log("Should not see this");';
 
-    const result = await runner.executeCode(code, { context, timeout: 100 });
+    const result = await executor.executeCode(code, {
+      mcpManager: manager,
+      context,
+      timeout: 100,
+    });
 
     // Process should be killed due to timeout
     // Just verify execution completed (timeout behavior can vary)
@@ -119,7 +135,11 @@ describe('CodeRunner', () => {
       console.error("Error output");
     `;
 
-    const result = await runner.executeCode(code, { context, timeout: 5000 });
+    const result = await executor.executeCode(code, {
+      mcpManager: manager,
+      context,
+      timeout: 10000,
+    });
 
     expect(result.stdout).toContain('Standard output');
     expect(result.stderr).toContain('Error output');
@@ -129,18 +149,42 @@ describe('CodeRunner', () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
 
     // Success case
-    const successResult = await runner.executeCode('console.log("ok");', {
+    const successResult = await executor.executeCode('console.log("ok");', {
+      mcpManager: manager,
       context,
-      timeout: 5000,
+      timeout: 10000,
     });
     expect(resultHandler.getExitCode(successResult)).toBe(0);
 
     // Error case
-    const errorResult = await runner.executeCode('process.exit(42);', {
+    const errorResult = await executor.executeCode('process.exit(42);', {
+      mcpManager: manager,
       context,
-      timeout: 5000,
+      timeout: 10000,
     });
     expect(resultHandler.getExitCode(errorResult)).toBe(42);
+  });
+
+  test('should handle IPC communication', async () => {
+    const context = await contextMgr.prepareContext(TEST_WORKSPACE);
+    // Test that IPC socket is properly set up
+    const code = `
+      if (process.env.MCPC_IPC_SOCKET) {
+        console.log("IPC socket path found");
+      } else {
+        console.error("IPC socket path not found");
+        process.exit(1);
+      }
+    `;
+
+    const result = await executor.executeCode(code, {
+      mcpManager: manager,
+      context,
+      timeout: 10000,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('IPC socket path found');
   });
 });
 

@@ -309,12 +309,14 @@ File not found: ./nonexistent.txt
    - Output: `servers/<serverName>/<toolName>.ts` + `index.ts` + `servers/_mcpac_runtime.ts`
 
 3. **Execution Layer** (`src/executor/`)
+   - `ipc-executor.ts`: **Production executor** with IPC-based MCP communication
+     - Used by `execute` command for all execution modes
+     - Manages MCP connections in parent process via MCPManager
+     - User code communicates via Unix Domain Socket (JSON-RPC 2.0)
+     - Exports `ExecutionResult` interface
    - `context.ts`: Prepares execution environment with env vars (MCPAC_CONFIG_PATH, MCPAC_WORKSPACE)
-   - `runner.ts`: Spawns Bun processes to execute TypeScript code
-   - `result.ts`: Handles exit codes, stdout/stderr
+   - `result.ts`: Handles exit codes, stdout/stderr (ResultHandler class)
    - `type-checker.ts`: Type checking functionality for generated code
-   - `ipc-executor.ts`: IPC-based execution for advanced use cases
-   - User code imports generated functions, which call back to MCP servers via MCPManager
 
 ### CLI Structure (`src/commands/`)
 

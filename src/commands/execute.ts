@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 import { ContextManager } from '../executor/context.js';
+import type { ExecutionResult } from '../executor/ipc-executor.js';
 import { IPCExecutor } from '../executor/ipc-executor.js';
 import { ResultHandler } from '../executor/result.js';
-import type { ExecutionResult } from '../executor/runner.js';
 import { TypeChecker } from '../executor/type-checker.js';
 import { MCPManager } from '../mcp/manager.js';
 import { output } from '../utils/output.js';

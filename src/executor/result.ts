@@ -1,5 +1,5 @@
 import { output } from '../utils/output.js';
-import type { ExecutionResult } from './runner.js';
+import type { ExecutionResult } from './ipc-executor.js';
 
 export class ResultHandler {
   /**
