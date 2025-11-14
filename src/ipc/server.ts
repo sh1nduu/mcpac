@@ -145,6 +145,24 @@ export class IPCServer {
       return;
     }
 
+    // Check permissions (capability-based security)
+    const permissionId = `${request.params.server}.${request.params.tool}`;
+    const grantedPermissions = request.params.grantedPermissions || [];
+
+    if (!grantedPermissions.includes(permissionId)) {
+      const response = createErrorResponse(
+        request.id,
+        IPCErrorCode.PERMISSION_DENIED,
+        `Permission denied: '${permissionId}' is not in granted permissions`,
+        {
+          required: permissionId,
+          granted: grantedPermissions,
+        },
+      );
+      this.sendResponse(socket, response);
+      return;
+    }
+
     // Handle the tool call request
     try {
       const result = await this.callMCPTool(

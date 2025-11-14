@@ -75,7 +75,6 @@ export class Generator {
     output.info(`Generating code for ${servers.length} server(s)...\n`);
 
     await this.fs.ensureOutputDir();
-    await this.fs.ensureRuntimeShim();
 
     const successfulServers: string[] = [];
     const allTools: ToolDefinition[] = [];
@@ -99,6 +98,11 @@ export class Generator {
     }
 
     if (successfulServers.length > 0) {
+      // Generate runtime shim with all tools for createRuntime implementation
+      output.info('Generating runtime with capability system...');
+      await this.fs.writeRuntimeShim(allTools);
+      output.info('✓ Generated runtime\n');
+
       // Generate type definitions file (_types.ts) for capability system
       output.info('Generating type definitions for capability system...');
       const typeDefinitionsCode = this.codegen.generateTypeDefinitions(allTools);

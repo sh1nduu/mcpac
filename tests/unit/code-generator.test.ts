@@ -148,7 +148,7 @@ describe('CodeGenerator', () => {
   });
 
   test('should generate runtime shim', () => {
-    const runtime = generator.generateRuntimeShim();
+    const runtime = generator.generateRuntimeShim([]);
 
     // Check runtime contains necessary components for IPC mode
     expect(runtime).toContain('export async function callMCPTool');

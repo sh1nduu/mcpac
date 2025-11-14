@@ -44,13 +44,85 @@ export class CodeGenerator {
   /**
    * Generate runtime shim code
    * Placed as servers/_mcpac_runtime.ts
+   * @param allTools - All tool definitions for generating createRuntime implementation
    */
-  generateRuntimeShim(): string {
+  generateRuntimeShim(allTools: ToolDefinition[]): string {
     // Replace version placeholders in the template
-    return RUNTIME_TEMPLATE.replace(/version: '0\.2\.0'/g, `version: '${VERSION}'`).replace(
-      /\/\/ Version: x\.x\.x/g,
-      `// Version: ${VERSION}`,
+    let runtimeCode = RUNTIME_TEMPLATE.replace(
+      /version: '0\.2\.0'/g,
+      `version: '${VERSION}'`,
+    ).replace(/\/\/ Version: x\.x\.x/g, `// Version: ${VERSION}`);
+
+    // Generate createRuntime implementation
+    const createRuntimeImpl = this.generateCreateRuntimeImplementation(allTools);
+
+    // Replace the placeholder createRuntime function
+    const placeholderStart = runtimeCode.indexOf('export function createRuntime(');
+    const placeholderEnd = runtimeCode.indexOf('}', placeholderStart) + 1;
+
+    if (placeholderStart !== -1 && placeholderEnd > placeholderStart) {
+      runtimeCode =
+        runtimeCode.substring(0, placeholderStart) +
+        createRuntimeImpl +
+        runtimeCode.substring(placeholderEnd);
+    }
+
+    return runtimeCode;
+  }
+
+  /**
+   * Generate createRuntime implementation based on available tools
+   * @private
+   */
+  private generateCreateRuntimeImplementation(allTools: ToolDefinition[]): string {
+    // Group tools by server and collect all permission IDs
+    const permissionIds: string[] = [];
+    for (const tool of allTools) {
+      permissionIds.push(`${tool.serverName}.${this.toCamelCase(tool.toolName)}`);
+    }
+
+    const lines: string[] = [];
+
+    lines.push('/**');
+    lines.push(' * Create a capability runtime with granted permissions.');
+    lines.push(
+      ' * Establishes permission boundary and returns runtime object with nested server.tool() access.',
     );
+    lines.push(' *');
+    lines.push(' * @param permissions - Array of permission IDs in "server.tool" format');
+    lines.push(' * @returns Runtime object with granted permissions');
+    lines.push(' */');
+    lines.push('export function createRuntime(permissions: string[]): any {');
+    lines.push('  // Set permission context for IPC requests');
+    lines.push('  setPermissionContext(permissions);');
+    lines.push('');
+    lines.push('  // Create method implementations that call MCP tools via IPC');
+    lines.push('  const methodImplementations: Record<string, (...args: any[]) => any> = {');
+
+    // Generate method implementations for each tool
+    for (let i = 0; i < allTools.length; i++) {
+      const tool = allTools[i];
+      if (!tool) continue; // Should never happen, but satisfies TypeScript
+
+      const functionName = this.toCamelCase(tool.toolName);
+      const permissionId = `${tool.serverName}.${functionName}`;
+      const comma = i < allTools.length - 1 ? ',' : '';
+
+      lines.push(
+        `    '${permissionId}': async (input: any) => callMCPTool('${tool.serverName}', '${tool.toolName}', input)${comma}`,
+      );
+    }
+
+    lines.push('  };');
+    lines.push('');
+    lines.push('  // Create authority and grant permissions');
+    lines.push(
+      '  const authority = new NamespacedRuntimeAuthority<string, Record<string, (...args: any[]) => any>>(methodImplementations);',
+    );
+    lines.push('  return authority.grant(...permissions as any);');
+    lines.push('}');
+
+    return lines.join('\n');
   }
 
   /**

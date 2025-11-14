@@ -15,6 +15,11 @@ export interface IPCRequest {
     server: string;
     tool: string;
     arguments: Record<string, unknown>;
+    /**
+     * Granted permissions for capability-based security validation
+     * Format: 'server.tool' (e.g., 'filesystem.read_file')
+     */
+    grantedPermissions?: string[];
   };
 }
 
@@ -59,6 +64,7 @@ export enum IPCErrorCode {
   TOOL_NOT_FOUND = -32001,
   TOOL_EXECUTION_FAILED = -32002,
   MCP_CONNECTION_ERROR = -32003,
+  PERMISSION_DENIED = -32004,
 }
 
 /**

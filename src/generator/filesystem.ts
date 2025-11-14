@@ -47,8 +47,9 @@ export class FilesystemManager {
   }
 
   /**
-   * Generate runtime shim
+   * Generate runtime shim (legacy method for backwards compatibility)
    * Placed as servers/_mcpac_runtime.ts
+   * @deprecated Use writeRuntimeShim with allTools instead
    */
   async ensureRuntimeShim(): Promise<void> {
     if (this.runtimeGenerated) return;
@@ -57,7 +58,21 @@ export class FilesystemManager {
     const codegen = new CodeGenerator();
     const runtimePath = join(this.outputDir, '_mcpac_runtime.ts');
 
-    await writeFile(runtimePath, codegen.generateRuntimeShim(), 'utf-8');
+    await writeFile(runtimePath, codegen.generateRuntimeShim([]), 'utf-8');
+    this.runtimeGenerated = true;
+  }
+
+  /**
+   * Write runtime shim with tool definitions for createRuntime implementation
+   * Placed as servers/_mcpac_runtime.ts
+   * @param allTools - All tool definitions for generating createRuntime
+   */
+  async writeRuntimeShim(allTools: import('./parser.js').ToolDefinition[]): Promise<void> {
+    const { CodeGenerator } = await import('./codegen.js');
+    const codegen = new CodeGenerator();
+    const runtimePath = join(this.outputDir, '_mcpac_runtime.ts');
+
+    await writeFile(runtimePath, codegen.generateRuntimeShim(allTools), 'utf-8');
     this.runtimeGenerated = true;
   }
 

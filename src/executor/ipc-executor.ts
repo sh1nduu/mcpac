@@ -1,6 +1,9 @@
 import { IPCServer } from '../ipc/server.js';
 import type { MCPManager } from '../mcp/manager.js';
 import type { ExecutionContext } from './context.js';
+import { PermissionChecker } from './permission-checker.js';
+import { PermissionExtractor } from './permission-extractor.js';
+import { RuntimeInjector } from './runtime-injector.js';
 
 export interface ExecutionResult {
   exitCode: number | null;
@@ -26,6 +29,7 @@ function debugError(...args: unknown[]): void {
 export interface IPCExecuteOptions {
   mcpManager: MCPManager;
   context: ExecutionContext;
+  grantedPermissions?: string[];
   timeout?: number;
   dryRun?: boolean;
 }
@@ -49,83 +53,146 @@ export class IPCExecutor {
 
     debugLog(`Executing file with IPC: ${filePath}`);
 
-    // Create IPC server
-    const ipcServer = new IPCServer(options.mcpManager);
+    // Read user code
+    const { readFile } = await import('node:fs/promises');
+    const userCode = await readFile(filePath, 'utf-8');
+
+    // Extract required permissions from code
+    const extractor = new PermissionExtractor();
+    const extractionResult = extractor.extract(userCode, filePath);
+
+    if (!extractionResult.success) {
+      // Permission validation failed
+      const errorMessage = [
+        'Permission validation failed:',
+        '',
+        ...extractionResult.errors.map((err) => `  ✗ ${err.location}: ${err.reason}`),
+      ].join('\n');
+
+      return {
+        exitCode: 1,
+        stdout: '',
+        stderr: errorMessage,
+        error: new Error('Permission validation failed'),
+      };
+    }
+
+    // Check permissions
+    const grantedPermissions = options.grantedPermissions ?? [];
+    const checker = new PermissionChecker();
+    const permissionCheck = checker.check(extractionResult.permissions, grantedPermissions);
+
+    if (!permissionCheck.allowed) {
+      // Permission check failed
+      return {
+        exitCode: 1,
+        stdout: '',
+        stderr: permissionCheck.detailedMessage,
+        error: new Error('Permission denied'),
+      };
+    }
+
+    // Inject runtime initialization with granted permissions
+    const injector = new RuntimeInjector();
+    const modifiedCode = injector.inject(userCode, {
+      grantedPermissions,
+    });
+
+    // Write modified code to temp file in workspace
+    const { writeFile, unlink } = await import('node:fs/promises');
+    const { join, dirname } = await import('node:path');
+    const tempFile = join(dirname(filePath), `.mcpac-temp-${Date.now()}.ts`);
 
     try {
-      // Start IPC server
-      await ipcServer.start();
-      const socketPath = ipcServer.getSocketPath();
-      debugLog(`IPC server started at ${socketPath}`);
+      await writeFile(tempFile, modifiedCode, 'utf-8');
+      debugLog(`Modified code written to ${tempFile}`);
 
-      // Spawn user code with IPC socket path in environment
-      const env = {
-        ...options.context.env,
-        MCPC_IPC_SOCKET: socketPath,
-      };
-
-      debugLog('Spawning user code process...');
-      const proc = Bun.spawn({
-        cmd: ['bun', 'run', filePath],
-        cwd: process.cwd(),
-        env,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        stdin: 'ignore',
-      });
-
-      // Setup timeout if specified
-      let timeoutId: Timer | undefined;
-      if (options.timeout) {
-        timeoutId = setTimeout(() => {
-          debugLog('Execution timeout, killing process');
-          proc.kill();
-        }, options.timeout);
-      }
+      // Create IPC server
+      const ipcServer = new IPCServer(options.mcpManager);
 
       try {
-        // Wait for user code to complete
-        const [stdout, stderr] = await Promise.all([
-          proc.stdout.text(),
-          proc.stderr.text(),
-          proc.exited,
-        ]);
+        // Start IPC server
+        await ipcServer.start();
+        const socketPath = ipcServer.getSocketPath();
+        debugLog(`IPC server started at ${socketPath}`);
 
-        debugLog(`User code exited with code ${proc.exitCode}`);
+        // Spawn user code with IPC socket path in environment
+        const env = {
+          ...options.context.env,
+          MCPC_IPC_SOCKET: socketPath,
+        };
 
-        return {
-          exitCode: proc.exitCode ?? 0,
-          stdout,
-          stderr,
-        };
-      } catch (error) {
-        debugError('Error during execution:', error);
-        return {
-          exitCode: null,
-          stdout: '',
-          stderr: '',
-          error: error as Error,
-        };
+        debugLog('Spawning user code process...');
+        const proc = Bun.spawn({
+          cmd: ['bun', 'run', tempFile],
+          cwd: process.cwd(),
+          env,
+          stdout: 'pipe',
+          stderr: 'pipe',
+          stdin: 'ignore',
+        });
+
+        // Setup timeout if specified
+        let timeoutId: Timer | undefined;
+        if (options.timeout) {
+          timeoutId = setTimeout(() => {
+            debugLog('Execution timeout, killing process');
+            proc.kill();
+          }, options.timeout);
+        }
+
+        try {
+          // Wait for user code to complete
+          const [stdout, stderr] = await Promise.all([
+            proc.stdout.text(),
+            proc.stderr.text(),
+            proc.exited,
+          ]);
+
+          debugLog(`User code exited with code ${proc.exitCode}`);
+
+          return {
+            exitCode: proc.exitCode ?? 0,
+            stdout,
+            stderr,
+          };
+        } catch (error) {
+          debugError('Error during execution:', error);
+          return {
+            exitCode: null,
+            stdout: '',
+            stderr: '',
+            error: error as Error,
+          };
+        } finally {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+        }
       } finally {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+        // Always cleanup IPC server and MCP connections
+        debugLog('Cleaning up IPC server and MCP connections...');
+        try {
+          await ipcServer.close();
+          debugLog('IPC server closed');
+        } catch (error) {
+          debugError('Error closing IPC server:', error);
+        }
+
+        try {
+          await options.mcpManager.closeAll();
+          debugLog('MCP connections closed');
+        } catch (error) {
+          debugError('Error closing MCP connections:', error);
         }
       }
     } finally {
-      // Always cleanup IPC server and MCP connections
-      debugLog('Cleaning up IPC server and MCP connections...');
+      // Cleanup temp file
       try {
-        await ipcServer.close();
-        debugLog('IPC server closed');
+        await unlink(tempFile);
+        debugLog(`Temp file removed: ${tempFile}`);
       } catch (error) {
-        debugError('Error closing IPC server:', error);
-      }
-
-      try {
-        await options.mcpManager.closeAll();
-        debugLog('MCP connections closed');
-      } catch (error) {
-        debugError('Error closing MCP connections:', error);
+        debugError('Error removing temp file:', error);
       }
     }
   }
@@ -175,59 +242,111 @@ export class IPCExecutor {
 
     debugLog(`Executing file with IPC (streaming): ${filePath}`);
 
-    const ipcServer = new IPCServer(options.mcpManager);
+    // Read user code
+    const { readFile, writeFile, unlink } = await import('node:fs/promises');
+    const { join, dirname } = await import('node:path');
+    const userCode = await readFile(filePath, 'utf-8');
+
+    // Extract required permissions from code
+    const extractor = new PermissionExtractor();
+    const extractionResult = extractor.extract(userCode, filePath);
+
+    if (!extractionResult.success) {
+      // Permission validation failed
+      console.error('Permission validation failed:');
+      console.error('');
+      for (const err of extractionResult.errors) {
+        console.error(`  ✗ ${err.location}: ${err.reason}`);
+      }
+      return 1;
+    }
+
+    // Check permissions
+    const grantedPermissions = options.grantedPermissions ?? [];
+    const checker = new PermissionChecker();
+    const permissionCheck = checker.check(extractionResult.permissions, grantedPermissions);
+
+    if (!permissionCheck.allowed) {
+      // Permission check failed
+      console.error(permissionCheck.detailedMessage);
+      return 1;
+    }
+
+    // Inject runtime initialization with granted permissions
+    const injector = new RuntimeInjector();
+    const modifiedCode = injector.inject(userCode, {
+      grantedPermissions,
+    });
+
+    // Write modified code to temp file in workspace
+    const tempFile = join(dirname(filePath), `.mcpac-temp-${Date.now()}.ts`);
 
     try {
-      await ipcServer.start();
-      const socketPath = ipcServer.getSocketPath();
-      debugLog(`IPC server started at ${socketPath}`);
+      await writeFile(tempFile, modifiedCode, 'utf-8');
+      debugLog(`Modified code written to ${tempFile}`);
 
-      const env = {
-        ...options.context.env,
-        MCPC_IPC_SOCKET: socketPath,
-      };
-
-      debugLog('Spawning user code process (streaming)...');
-      const proc = Bun.spawn({
-        cmd: ['bun', 'run', filePath],
-        cwd: process.cwd(),
-        env,
-        stdout: 'inherit',
-        stderr: 'inherit',
-        stdin: 'ignore',
-      });
-
-      let timeoutId: Timer | undefined;
-      if (options.timeout) {
-        timeoutId = setTimeout(() => {
-          debugLog('Execution timeout, killing process');
-          proc.kill();
-        }, options.timeout);
-      }
+      const ipcServer = new IPCServer(options.mcpManager);
 
       try {
-        await proc.exited;
-        debugLog(`User code exited with code ${proc.exitCode}`);
-        return proc.exitCode;
+        await ipcServer.start();
+        const socketPath = ipcServer.getSocketPath();
+        debugLog(`IPC server started at ${socketPath}`);
+
+        const env = {
+          ...options.context.env,
+          MCPC_IPC_SOCKET: socketPath,
+        };
+
+        debugLog('Spawning user code process (streaming)...');
+        const proc = Bun.spawn({
+          cmd: ['bun', 'run', tempFile],
+          cwd: process.cwd(),
+          env,
+          stdout: 'inherit',
+          stderr: 'inherit',
+          stdin: 'ignore',
+        });
+
+        let timeoutId: Timer | undefined;
+        if (options.timeout) {
+          timeoutId = setTimeout(() => {
+            debugLog('Execution timeout, killing process');
+            proc.kill();
+          }, options.timeout);
+        }
+
+        try {
+          await proc.exited;
+          debugLog(`User code exited with code ${proc.exitCode}`);
+          return proc.exitCode;
+        } finally {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+        }
       } finally {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+        debugLog('Cleaning up IPC server and MCP connections...');
+        try {
+          await ipcServer.close();
+          debugLog('IPC server closed');
+        } catch (error) {
+          debugError('Error closing IPC server:', error);
+        }
+
+        try {
+          await options.mcpManager.closeAll();
+          debugLog('MCP connections closed');
+        } catch (error) {
+          debugError('Error closing MCP connections:', error);
         }
       }
     } finally {
-      debugLog('Cleaning up IPC server and MCP connections...');
+      // Cleanup temp file
       try {
-        await ipcServer.close();
-        debugLog('IPC server closed');
+        await unlink(tempFile);
+        debugLog(`Temp file removed: ${tempFile}`);
       } catch (error) {
-        debugError('Error closing IPC server:', error);
-      }
-
-      try {
-        await options.mcpManager.closeAll();
-        debugLog('MCP connections closed');
-      } catch (error) {
-        debugError('Error closing MCP connections:', error);
+        debugError('Error removing temp file:', error);
       }
     }
   }
