@@ -13,6 +13,8 @@ describe('RuntimeInjector', () => {
   describe('Basic injection', () => {
     test('should inject runtime initialization before user code', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
         console.log('Hello, World!');
       `;
 
@@ -21,7 +23,6 @@ describe('RuntimeInjector', () => {
       });
 
       expect(modifiedCode).toContain('// MCPaC Runtime Initialization (auto-injected)');
-      expect(modifiedCode).toContain("import type { McpRequires } from './servers/_types.js';");
       expect(modifiedCode).toContain(
         "import { createRuntime } from './servers/_mcpac_runtime.js';",
       );
@@ -33,6 +34,8 @@ describe('RuntimeInjector', () => {
 
     test('should inject multiple permissions', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file', 'filesystem.write_file']>;
         const data = await runtime.filesystem.read_file({ path: '/data.txt' });
         await runtime.filesystem.write_file({ path: '/output.txt', content: data });
       `;
@@ -47,6 +50,8 @@ describe('RuntimeInjector', () => {
 
     test('should inject with empty permissions array', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<[]>;
         console.log('No permissions needed');
       `;
 
@@ -61,6 +66,8 @@ describe('RuntimeInjector', () => {
 
     test('should inject with single permission', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
         const data = await runtime.filesystem.read_file({ path: '/data.txt' });
       `;
 
@@ -75,7 +82,11 @@ describe('RuntimeInjector', () => {
 
   describe('Custom options', () => {
     test('should use custom runtime module path', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
 
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -86,18 +97,27 @@ describe('RuntimeInjector', () => {
     });
 
     test('should use custom types module path', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './custom/types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
 
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
         typesModulePath: './custom/types.js',
       });
 
+      // Should not add another import since user already has it
       expect(modifiedCode).toContain("import type { McpRequires } from './custom/types.js';");
     });
 
     test('should use custom runtime variable name', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const rt: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
 
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -108,7 +128,11 @@ describe('RuntimeInjector', () => {
     });
 
     test('should use all custom options together', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './custom/types.js';
+        declare const rt: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
 
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -125,7 +149,11 @@ describe('RuntimeInjector', () => {
 
   describe('hasInjection detection', () => {
     test('should detect injected code', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
       });
@@ -134,13 +162,19 @@ describe('RuntimeInjector', () => {
     });
 
     test('should return false for non-injected code', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
 
       expect(injector.hasInjection(userCode)).toBe(false);
     });
 
     test('should return false for code with similar but different comments', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<[]>;
         // MCPaC Runtime
         console.log('test');
       `;
@@ -151,7 +185,11 @@ describe('RuntimeInjector', () => {
 
   describe('removeInjection', () => {
     test('should remove injected runtime code', () => {
-      const userCode = `console.log('Hello, World!');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('Hello, World!');
+      `;
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
       });
@@ -164,7 +202,11 @@ describe('RuntimeInjector', () => {
     });
 
     test('should return original code if no injection found', () => {
-      const userCode = `console.log('Hello, World!');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('Hello, World!');
+      `;
 
       const cleanedCode = injector.removeInjection(userCode);
 
@@ -175,6 +217,8 @@ describe('RuntimeInjector', () => {
       const codeWithStartMarker = `
         // ============================================================================
         // MCPaC Runtime Initialization (auto-injected)
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<[]>;
         console.log('test');
       `;
 
@@ -185,6 +229,8 @@ describe('RuntimeInjector', () => {
 
     test('should preserve indentation and formatting', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
         function test() {
           console.log('test');
         }
@@ -201,7 +247,11 @@ describe('RuntimeInjector', () => {
 
   describe('reinject', () => {
     test('should remove old injection and inject new permissions', () => {
-      const userCode = `console.log('Hello, World!');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('Hello, World!');
+      `;
       const firstInjection = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
       });
@@ -210,13 +260,22 @@ describe('RuntimeInjector', () => {
         grantedPermissions: ['filesystem.write_file'],
       });
 
-      expect(secondInjection).toContain('filesystem.write_file');
-      expect(secondInjection).not.toContain('filesystem.read_file');
+      // New injection should contain new permission in the createRuntime call
+      expect(secondInjection).toContain("createRuntime([\n  'filesystem.write_file'\n]);");
+      // User's original declaration should still be present (we don't modify user code)
+      expect(secondInjection).toContain(
+        "declare const runtime: McpRequires<['filesystem.read_file']>",
+      );
+      // Should only have one injection marker
       expect(secondInjection.match(/MCPaC Runtime Initialization/g)).toHaveLength(1);
     });
 
     test('should work on code without existing injection', () => {
-      const userCode = `console.log('Hello, World!');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('Hello, World!');
+      `;
 
       const injected = injector.reinject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -227,7 +286,11 @@ describe('RuntimeInjector', () => {
     });
 
     test('should update permissions correctly', () => {
-      const userCode = `const data = await runtime.filesystem.read_file({ path: '/data.txt' });`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        const data = await runtime.filesystem.read_file({ path: '/data.txt' });
+      `;
 
       const first = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -244,7 +307,10 @@ describe('RuntimeInjector', () => {
 
   describe('Edge cases', () => {
     test('should handle empty user code', () => {
-      const userCode = '';
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+      `;
 
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -254,8 +320,13 @@ describe('RuntimeInjector', () => {
       expect(modifiedCode).toContain('filesystem.read_file');
     });
 
-    test('should handle user code with only whitespace', () => {
-      const userCode = '   \n\n   ';
+    test('should handle user code with only whitespace after declarations', () => {
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+
+
+      `;
 
       const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['filesystem.read_file'],
@@ -266,8 +337,15 @@ describe('RuntimeInjector', () => {
 
     test('should handle very long permission lists', () => {
       const permissions = Array.from({ length: 100 }, (_, i) => `server${i}.tool${i}`);
+      const permissionsStr = permissions.map((p) => `'${p}'`).join(', ');
 
-      const modifiedCode = injector.inject('console.log("test");', {
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<[${permissionsStr}]>;
+        console.log("test");
+      `;
+
+      const modifiedCode = injector.inject(userCode, {
         grantedPermissions: permissions,
       });
 
@@ -277,7 +355,13 @@ describe('RuntimeInjector', () => {
     });
 
     test('should handle permissions with special characters', () => {
-      const modifiedCode = injector.inject('console.log("test");', {
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['file-system.read_file', 'http-client.get_request']>;
+        console.log("test");
+      `;
+
+      const modifiedCode = injector.inject(userCode, {
         grantedPermissions: ['file-system.read_file', 'http-client.get_request'],
       });
 
@@ -287,6 +371,8 @@ describe('RuntimeInjector', () => {
 
     test('should preserve user code with runtime initialization comments', () => {
       const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
         // Initialize runtime
         const data = await runtime.filesystem.read_file({ path: '/data.txt' });
       `;
@@ -302,7 +388,11 @@ describe('RuntimeInjector', () => {
 
   describe('injectRuntime convenience function', () => {
     test('should work as standalone function', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
 
       const modifiedCode = injectRuntime(userCode, ['filesystem.read_file']);
 
@@ -311,13 +401,51 @@ describe('RuntimeInjector', () => {
     });
 
     test('should produce same result as RuntimeInjector.inject()', () => {
-      const userCode = `console.log('test');`;
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        declare const runtime: McpRequires<['filesystem.read_file', 'filesystem.write_file']>;
+        console.log('test');
+      `;
       const permissions = ['filesystem.read_file', 'filesystem.write_file'];
 
       const result1 = injectRuntime(userCode, permissions);
       const result2 = injector.inject(userCode, { grantedPermissions: permissions });
 
       expect(result1).toBe(result2);
+    });
+  });
+
+  describe('Missing required declarations', () => {
+    test('should throw error when McpRequires import is missing', () => {
+      const userCode = `
+        declare const runtime: McpRequires<['filesystem.read_file']>;
+        console.log('test');
+      `;
+
+      expect(() => {
+        injector.inject(userCode, { grantedPermissions: ['filesystem.read_file'] });
+      }).toThrow('Missing required permission declarations');
+    });
+
+    test('should throw error when runtime declaration is missing', () => {
+      const userCode = `
+        import type { McpRequires } from './servers/_types.js';
+        console.log('test');
+      `;
+
+      expect(() => {
+        injector.inject(userCode, { grantedPermissions: ['filesystem.read_file'] });
+      }).toThrow('Missing required permission declarations');
+    });
+
+    test('should throw error when both declarations are missing', () => {
+      const userCode = `
+        console.log('test');
+      `;
+
+      expect(() => {
+        injector.inject(userCode, { grantedPermissions: ['filesystem.read_file'] });
+      }).toThrow('Missing required permission declarations');
     });
   });
 });

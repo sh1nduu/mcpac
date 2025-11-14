@@ -50,13 +50,23 @@ export class RuntimeInjector {
   /**
    * Check if user code has required declarations
    */
-  private hasRequiredDeclarations(code: string): {
+  private hasRequiredDeclarations(
+    code: string,
+    typesModulePath: string,
+    runtimeVariableName: string,
+  ): {
     hasMcpRequiresImport: boolean;
     hasRuntimeDeclaration: boolean;
   } {
-    const hasMcpRequiresImport =
-      /import\s+type\s+\{[^}]*McpRequires[^}]*\}\s+from\s+['"][^'"]*_types/.test(code);
-    const hasRuntimeDeclaration = /declare\s+const\s+runtime\s*:\s*McpRequires</.test(code);
+    // Escape special regex characters in the module path
+    const escapedPath = typesModulePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hasMcpRequiresImport = new RegExp(
+      `import\\s+type\\s+\\{[^}]*McpRequires[^}]*\\}\\s+from\\s+['"]${escapedPath}`,
+    ).test(code);
+
+    const hasRuntimeDeclaration = new RegExp(
+      `declare\\s+const\\s+${runtimeVariableName}\\s*:\\s*McpRequires<`,
+    ).test(code);
 
     return {
       hasMcpRequiresImport,
@@ -80,7 +90,11 @@ export class RuntimeInjector {
       runtimeVariableName = 'runtime',
     } = options;
 
-    const { hasMcpRequiresImport, hasRuntimeDeclaration } = this.hasRequiredDeclarations(code);
+    const { hasMcpRequiresImport, hasRuntimeDeclaration } = this.hasRequiredDeclarations(
+      code,
+      typesModulePath,
+      runtimeVariableName,
+    );
 
     // Check for required declarations
     if (!hasMcpRequiresImport || !hasRuntimeDeclaration) {

@@ -65,15 +65,20 @@ describe('IPCExecutor', () => {
   test('should prepare execution context with environment variables', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
 
-    expect(context.workspaceDir).toBe(TEST_WORKSPACE);
+    // Context should contain absolute path
+    expect(context.workspaceDir).toContain('tests/unit/workspace');
     expect(context.env).toBeDefined();
     expect(context.env.MCPAC_CONFIG_PATH).toBe(TEST_CONFIG_PATH);
-    expect(context.env.MCPAC_WORKSPACE).toBe(TEST_WORKSPACE);
+    expect(context.env.MCPAC_WORKSPACE).toContain('tests/unit/workspace');
   });
 
   test('should execute simple code successfully', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
-    const code = 'console.log("Hello from IPC test");';
+    const code = `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
+      console.log("Hello from IPC test");
+    `;
 
     const result = await executor.executeCode(code, {
       mcpManager: manager,
@@ -91,7 +96,12 @@ describe('IPCExecutor', () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
     const testFile = `${TEST_WORKSPACE}/test-script.ts`;
 
-    await writeFile(testFile, 'console.log("IPC file execution test");');
+    await writeFile(
+      testFile,
+      `import type { McpRequires } from './servers/_types.js';
+declare const runtime: McpRequires<[]>;
+console.log("IPC file execution test");`,
+    );
 
     const result = await executor.executeFile(testFile, {
       mcpManager: manager,
@@ -107,7 +117,11 @@ describe('IPCExecutor', () => {
 
   test('should handle execution errors', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
-    const code = 'throw new Error("Test error");';
+    const code = `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
+      throw new Error("Test error");
+    `;
 
     const result = await executor.executeCode(code, {
       mcpManager: manager,
@@ -123,7 +137,12 @@ describe('IPCExecutor', () => {
   test('should handle timeout', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
     // Create code that runs longer than timeout
-    const code = 'await Bun.sleep(10000); console.log("Should not see this");';
+    const code = `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
+      await Bun.sleep(10000);
+      console.log("Should not see this");
+    `;
 
     const result = await executor.executeCode(code, {
       mcpManager: manager,
@@ -140,6 +159,8 @@ describe('IPCExecutor', () => {
   test('should capture stdout and stderr separately', async () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
     const code = `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
       console.log("Standard output");
       console.error("Error output");
     `;
@@ -159,21 +180,35 @@ describe('IPCExecutor', () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
 
     // Success case
-    const successResult = await executor.executeCode('console.log("ok");', {
-      mcpManager: manager,
-      context,
-      grantedPermissions: [],
-      timeout: 10000,
-    });
+    const successResult = await executor.executeCode(
+      `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
+      console.log("ok");
+    `,
+      {
+        mcpManager: manager,
+        context,
+        grantedPermissions: [],
+        timeout: 10000,
+      },
+    );
     expect(resultHandler.getExitCode(successResult)).toBe(0);
 
     // Error case
-    const errorResult = await executor.executeCode('process.exit(42);', {
-      mcpManager: manager,
-      context,
-      grantedPermissions: [],
-      timeout: 10000,
-    });
+    const errorResult = await executor.executeCode(
+      `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
+      process.exit(42);
+    `,
+      {
+        mcpManager: manager,
+        context,
+        grantedPermissions: [],
+        timeout: 10000,
+      },
+    );
     expect(resultHandler.getExitCode(errorResult)).toBe(42);
   });
 
@@ -181,6 +216,8 @@ describe('IPCExecutor', () => {
     const context = await contextMgr.prepareContext(TEST_WORKSPACE);
     // Test that IPC socket is properly set up
     const code = `
+      import type { McpRequires } from './servers/_types.js';
+      declare const runtime: McpRequires<[]>;
       if (process.env.MCPC_IPC_SOCKET) {
         console.log("IPC socket path found");
       } else {
