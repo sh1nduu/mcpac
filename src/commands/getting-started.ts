@@ -66,7 +66,7 @@ After running 'mcpac generate', you'll have a hierarchical structure:
       └── <tool2>.d.ts
 
 Key Features:
-  • Hierarchical .d.ts structure reduces token consumption by 60-75%
+  • Hierarchical .d.ts structure reduces token consumption
   • MCPaC namespace eliminates boilerplate imports
   • Type-safe access to all MCP tools
   • Capability-based permission system

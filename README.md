@@ -125,13 +125,14 @@ mcpac generate
 Generated files:
 ```
 servers/
-├── _mcpac_runtime.ts      # Runtime library
-├── filesystem/
-│   ├── index.ts            # Exports
-│   ├── read_file.ts        # Generated function
-│   ├── write_file.ts
-│   └── ...
-└── index.ts                # Root exports
+├── _mcpac_runtime.ts       # Runtime implementation (IPC, capability system)
+├── _types.d.ts             # Lightweight type aggregator
+├── global.d.ts             # MCPaC ambient namespace (no import needed!)
+└── filesystem/
+    ├── index.d.ts          # Server-level type definitions
+    ├── readFile.d.ts       # Individual tool type definitions
+    ├── writeFile.d.ts
+    └── ...
 ```
 
 ### 3. Explore Available Tools
@@ -157,10 +158,8 @@ filesystem.writeFile
 
 Create `example.ts`:
 ```typescript
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
+// Declare required permissions (MCPaC namespace - no import needed!)
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
 
 // Read file
 const result = await runtime.filesystem.readFile({
@@ -176,6 +175,12 @@ await runtime.filesystem.writeFile({
   path: 'output.txt',
   content: 'Hello from MCPaC!'
 });
+```
+
+**Alternative syntax** (explicit import):
+```typescript
+import type { McpRequires } from './servers/_types.js';
+declare const runtime: McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
 ```
 
 ### 5. Execute Code with Permissions
@@ -303,9 +308,13 @@ mcpac execute -f script.ts -v --grant filesystem.readFile
 
 **Permission System:**
 
-Your code must explicitly declare required permissions:
+Your code must explicitly declare required permissions using the MCPaC namespace:
 
 ```typescript
+// Recommended: MCPaC namespace (no import needed)
+declare const runtime: MCPaC.McpRequires<['server.tool1', 'server.tool2']>;
+
+// Alternative: explicit import
 import type { McpRequires } from './servers/_types.js';
 declare const runtime: McpRequires<['server.tool1', 'server.tool2']>;
 ```
@@ -337,10 +346,8 @@ mcpac <command> --help
 ### Example 1: File Operations
 
 ```typescript
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.listDirectory', 'filesystem.readFile']>;
+// Declare required permissions (MCPaC namespace - no import needed!)
+declare const runtime: MCPaC.McpRequires<['filesystem.listDirectory', 'filesystem.readFile']>;
 
 // List directory
 const dirResult = await runtime.filesystem.listDirectory({ path: '.' });
@@ -371,10 +378,8 @@ mcpac generate
 ```
 
 ```typescript
-import type { McpRequires } from './servers/_types.js';
-
-// Declare required permissions
-declare const runtime: McpRequires<['github.createIssue']>;
+// Declare required permissions (MCPaC namespace - no import needed!)
+declare const runtime: MCPaC.McpRequires<['github.createIssue']>;
 
 // Create issue
 const result = await runtime.github.createIssue({
@@ -422,33 +427,41 @@ mcpac consists of three main layers:
 
 ### Generated Code Structure
 
-MCPaC generates TypeScript definitions and a capability-based runtime:
+MCPaC generates a hierarchical type system with a capability-based runtime:
 
-**Type Definitions** (`servers/_types.ts`):
-```typescript
-// Server interface with all tools
-export interface McpServers {
-  filesystem: {
-    readFile(args: ReadFileInput): Promise<ReadFileOutput>;
-    writeFile(args: WriteFileInput): Promise<WriteFileOutput>;
-    // ...
-  };
-}
-
-// Permission type for explicit declarations
-export type McpRequires<T extends readonly PermissionId[]> =
-  PickNamespacedRuntime<T, PermissionId, Methods>;
+**Hierarchical Type Structure:**
+```
+servers/
+├── _mcpac_runtime.ts       # Runtime implementation (IPC, capability system)
+├── _types.d.ts             # Lightweight type aggregator (McpServers interface)
+├── global.d.ts             # MCPaC ambient namespace (no import needed!)
+└── <serverName>/
+    ├── index.d.ts          # Server-level type definitions
+    ├── <tool1>.d.ts        # Individual tool type definitions
+    └── <tool2>.d.ts
 ```
 
-**User Code** (with explicit permission declarations):
+**MCPaC Ambient Namespace** (`servers/global.d.ts`):
 ```typescript
-import type { McpRequires } from './servers/_types.js';
+declare namespace MCPaC {
+  export type McpRequires<T extends readonly string[]> =
+    import('./_types.d.ts').McpRequires<T>;
+}
+```
 
-// Declare required permissions
-declare const runtime: McpRequires<['filesystem.readFile']>;
+**User Code** (recommended - MCPaC namespace):
+```typescript
+// No import needed - MCPaC namespace is ambient!
+declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
 
 // Use runtime to call MCP tools
 const result = await runtime.filesystem.readFile({ path: 'data.txt' });
+```
+
+**Alternative** (explicit import):
+```typescript
+import type { McpRequires } from './servers/_types.js';
+declare const runtime: McpRequires<['filesystem.readFile']>;
 ```
 
 **Permission Format**: `server.toolName` (camelCase), e.g., `filesystem.readFile`, `github.createIssue`
@@ -485,7 +498,7 @@ bun run clean          # Clean build artifacts
 
 ## Limitations
 
-- Generated code is TypeScript with `.ts` extension (executed by Bun)
+- Generated code uses hierarchical `.d.ts` type definitions (executed by Bun)
 - MCP server must be accessible at code generation and execution time
 - HTTP transport does not support SSE streaming yet
 - Windows binary may trigger antivirus warnings (false positive)

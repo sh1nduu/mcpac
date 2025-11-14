@@ -314,12 +314,11 @@ File not found: ./nonexistent.txt
      ├── _mcpac_runtime.ts       # Runtime implementation (IPC, capability system)
      ├── _types.d.ts             # Lightweight type aggregator (McpServers interface)
      ├── global.d.ts             # MCPaC ambient namespace (no-import usage)
-     ├── <serverName>/
-     │   ├── <toolName>.d.ts     # Individual tool type definitions
-     │   └── index.d.ts          # Server-level type aggregation
-     └── index.ts                # Legacy exports (optional)
+     └── <serverName>/
+         ├── <toolName>.d.ts     # Individual tool type definitions
+         └── index.d.ts          # Server-level type aggregation
      ```
-   - **Token Efficiency**: Tool types are split into separate `.d.ts` files, reducing context size by 60-75% for large projects
+   - **Token Efficiency**: Tool types are split into separate `.d.ts` files, reducing context size for large projects
 
 3. **Execution Layer** (`src/executor/`)
    - `ipc-executor.ts`: **Production executor** with IPC-based MCP communication
