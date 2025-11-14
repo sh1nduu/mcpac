@@ -305,7 +305,9 @@ File not found: ./nonexistent.txt
    - `codegen.ts`: Converts MCP tool definitions to TypeScript (exports `CodeGenerator` class)
    - `parser.ts`: JSON Schema → TypeScript types via json-schema-to-typescript (exports `SchemaParser` class)
    - `filesystem.ts`: File operations (exports `FilesystemManager` class)
-   - `runtime-template.ts`: Runtime template for generated code
+   - `templates/runtime-base.template.ts`: Runtime template source (loaded via Bun.macro)
+   - `templates/loadTemplate.macro.ts`: Bun macro for bundle-time template loading (like Rust's `include_str!`)
+   - **Template Loading**: Uses Bun.macro to embed template at bundle-time for single executable support
    - Output: `servers/<serverName>/<toolName>.ts` + `index.ts` + `servers/_mcpac_runtime.ts`
 
 3. **Execution Layer** (`src/executor/`)
@@ -313,10 +315,14 @@ File not found: ./nonexistent.txt
      - Used by `execute` command for all execution modes
      - Manages MCP connections in parent process via MCPManager
      - User code communicates via Unix Domain Socket (JSON-RPC 2.0)
+     - **Permission conversion**: Converts camelCase to snake_case before passing to IPCServer
      - Exports `ExecutionResult` interface
    - `context.ts`: Prepares execution environment with env vars (MCPAC_CONFIG_PATH, MCPAC_WORKSPACE)
    - `result.ts`: Handles exit codes, stdout/stderr (ResultHandler class)
    - `type-checker.ts`: Type checking functionality for generated code
+   - `permission-checker.ts`: Validates required vs granted permissions
+   - `permission-extractor.ts`: Extracts permissions from TypeScript code
+   - `runtime-injector.ts`: Injects runtime initialization into user code
 
 ### CLI Structure (`src/commands/`)
 
@@ -326,6 +332,59 @@ All commands support `MCPAC_CONFIG_PATH` environment variable for test isolation
 const configPath = process.env.MCPAC_CONFIG_PATH;
 const manager = MCPManager.getInstance(configPath);
 ```
+
+### Security Architecture: Capability-Based Permissions
+
+MCPaC implements a capability-based permission system with a clear trust boundary between host and user code.
+
+**Trust Boundary:**
+```
+TRUSTED (Parent Process):
+  ┌─────────────────────────────────────────┐
+  │ IPCExecutor                             │
+  │  • Converts camelCase → snake_case      │
+  │  • Stores trusted permissions           │
+  ├─────────────────────────────────────────┤
+  │ IPCServer                               │
+  │  • Enforces permissions (authoritative) │
+  │  • Rejects unauthorized calls           │
+  ├─────────────────────────────────────────┤
+  │ MCPManager                              │
+  │  • Executes allowed MCP tools           │
+  └─────────────────────────────────────────┘
+           ↕ IPC Socket (Unix Domain Socket)
+  ┌─────────────────────────────────────────┐
+  │ User Code (Child Process)               │
+  │  • Type-safe runtime access             │
+  │  • No permission enforcement            │
+  │  • callMCPTool() simple IPC wrapper     │
+  └─────────────────────────────────────────┘
+UNTRUSTED
+```
+
+**Key Security Principles:**
+
+1. **Host-Side Enforcement**: All permission checks happen in IPCServer (trusted zone)
+2. **No User-Side Checks**: User code has type safety but cannot bypass permissions
+3. **Single Source of Truth**: Permissions stored in IPCServer constructor, not sent via IPC
+4. **Permission Format Conversion**: IPCExecutor converts camelCase (CLI) to snake_case (MCP) before storing
+
+**Permission Flow:**
+```
+1. CLI: --grant filesystem.readFile (camelCase)
+2. Executor: Convert → filesystem.read_file (snake_case)
+3. IPCServer: Store ["filesystem.read_file"] (trusted)
+4. User Code: rt.filesystem.readFile({...}) (type-safe)
+5. Runtime: callMCPTool("filesystem", "read_file", {...})
+6. IPCClient: Send IPC request (no permission data)
+7. IPCServer: Check "filesystem.read_file" in stored permissions ✅
+8. MCPManager: Execute MCP tool if allowed
+```
+
+**IPC Layer** (`src/ipc/`):
+- `server.ts`: IPCServer handles tool call requests, enforces permissions
+- `protocol.ts`: JSON-RPC 2.0 protocol definitions (no permission field in requests)
+- Permission checks use `this.grantedPermissions` (trusted), not request data (untrusted)
 
 ### Critical Type Conversions
 
@@ -342,6 +401,26 @@ const toolDef = {
 **Tool Result Format**: Array of objects, not string
 ```typescript
 result.content // => [{ type: "text", text: "..." }]
+```
+
+**Permission Format Conversion**: camelCase (CLI/User) → snake_case (MCP/Internal)
+```typescript
+// User provides (CLI or type annotations)
+'filesystem.readFile'
+
+// IPCExecutor converts to
+'filesystem.read_file'
+
+// IPCServer checks against
+this.grantedPermissions // ['filesystem.read_file']
+
+// Conversion function (in ipc-executor.ts)
+function permissionToSnakeCase(permission: string): string {
+  const [server, ...toolParts] = permission.split('.');
+  const camelTool = toolParts.join('.');
+  const snakeTool = camelTool.replace(/([A-Z])/g, '_$1').toLowerCase();
+  return `${server}.${snakeTool}`;
+}
 ```
 
 ## Testing Strategy
@@ -380,6 +459,46 @@ await client.close();  // NOT disconnect()!
 - `--minify` for size reduction
 - `--sourcemap` for debugging (zstd compressed)
 - No `--bytecode` (ESM incompatible)
+
+### Bun.macro for Template Loading
+MCPaC uses Bun's macro system to embed runtime templates at bundle-time (similar to Rust's `include_str!`):
+
+**Implementation** (`src/generator/templates/loadTemplate.macro.ts`):
+```typescript
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export function loadRuntimeTemplate(): string {
+  // Executed at bundle-time, not runtime
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const templatePath = join(__dirname, 'runtime-base.template.ts');
+  return readFileSync(templatePath, 'utf-8');
+}
+```
+
+**Usage** (`src/generator/codegen.ts`):
+```typescript
+import { loadRuntimeTemplate } from './templates/loadTemplate.macro.ts' with { type: 'macro' };
+
+generateRuntimeShim(allTools: ToolDefinition[]): string {
+  const templateContent = loadRuntimeTemplate();  // ← Inlined at bundle-time
+  // ... process template ...
+}
+```
+
+**Benefits:**
+- Template embedded as string literal in compiled binary
+- No filesystem access needed at runtime (works in single executable)
+- Template maintained as separate `.ts` file (syntax highlighting, IDE support)
+- Similar developer experience to Rust's `include_str!()` macro
+
+**Key Points:**
+- Macro functions execute during bundle-time, not runtime
+- Return value is inlined as a string literal
+- Function source code NOT included in bundle
+- Must use ES module syntax (not CommonJS)
 
 ### Cross-compilation
 All platforms can be built from any host:
@@ -435,6 +554,10 @@ The project version is defined in two locations that must be kept in sync:
 4. **Client method is close()** - Not `disconnect()` (will error)
 5. **Error type must be Error object** - Not string in test expectations
 6. **Bytecode mode unavailable** - ESM + top-level await incompatible
+7. **Permission format conversion** - CLI uses camelCase (`filesystem.readFile`), IPCServer expects snake_case (`filesystem.read_file`)
+8. **Host-side permission enforcement** - Permission checks happen in IPCServer only, user-side code has no enforcement
+9. **Template loading via Bun.macro** - Runtime template embedded at bundle-time, not loaded at runtime (enables single executable)
+10. **IPC protocol has no permissions** - Permissions never sent via IPC, stored in IPCServer constructor (security)
 
 ## Documentation Updates
 
