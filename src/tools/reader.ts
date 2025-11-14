@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 export interface ToolInfo {
   serverName: string;
-  toolName: string; // snake_case (file name)
-  functionName: string; // camelCase (function name)
+  toolName: string; // camelCase (file name, e.g., 'listDirectory')
+  functionName: string; // camelCase (function name, same as toolName)
   description?: string;
   inputType: string;
   outputType: string;
@@ -33,21 +33,21 @@ export class ToolsReader {
   }
 
   /**
-   * Discover all server names from the root index.ts
+   * Discover all server names from the _types.d.ts file
    * Returns server names in kebab-case (e.g., 'demo-filesystem')
    */
   async discoverServers(): Promise<string[]> {
-    const indexPath = join(this.outputDir, 'index.ts');
+    const typesPath = join(this.outputDir, '_types.d.ts');
 
-    if (!existsSync(indexPath)) {
+    if (!existsSync(typesPath)) {
       return [];
     }
 
-    const content = await readFile(indexPath, 'utf-8');
+    const content = await readFile(typesPath, 'utf-8');
 
     // Extract server names from import statements
-    // Example: import * as demoFilesystem from './demo-filesystem/index.js';
-    const importPattern = /import \* as \w+ from '\.\/([^/]+)\/index\.js';/g;
+    // Example: import type { DemoFilesystemServer } from './demo-filesystem/index.d.ts';
+    const importPattern = /import type \{[^}]+\} from '\.\/([^/]+)\/index\.d\.ts';/g;
     const matches = [...content.matchAll(importPattern)];
 
     return matches.map((match) => match[1]).filter((name): name is string => name !== undefined);
@@ -55,11 +55,11 @@ export class ToolsReader {
 
   /**
    * List all tool names for a given server
-   * Returns tool names in snake_case (e.g., 'read_file')
+   * Returns tool names in camelCase (e.g., 'readFile')
    */
   async listTools(serverName: string): Promise<string[]> {
     const serverDir = join(this.outputDir, serverName);
-    const indexPath = join(serverDir, 'index.ts');
+    const indexPath = join(serverDir, 'index.d.ts');
 
     if (!existsSync(indexPath)) {
       throw new Error(`Server '${serverName}' not found in generated code`);
@@ -67,9 +67,9 @@ export class ToolsReader {
 
     const content = await readFile(indexPath, 'utf-8');
 
-    // Extract tool file names from export statements
-    // Example: export * from './read_file.js';
-    const exportPattern = /export \* from '\.\/([^']+)\.js';/g;
+    // Extract tool file names from type export statements
+    // Example: export type { ReadFileInput, ReadFileOutput, ReadFileMethod } from './read_file.d.ts';
+    const exportPattern = /export type \{[^}]+\} from '\.\/([^']+)\.d\.ts';/g;
     const matches = [...content.matchAll(exportPattern)];
 
     return matches.map((match) => match[1]).filter((name): name is string => name !== undefined);
@@ -80,7 +80,7 @@ export class ToolsReader {
    */
   async getToolInfo(serverName: string, toolName: string): Promise<ToolInfo> {
     const serverDir = join(this.outputDir, serverName);
-    const toolPath = join(serverDir, `${toolName}.ts`);
+    const toolPath = join(serverDir, `${toolName}.d.ts`);
 
     if (!existsSync(toolPath)) {
       throw new Error(`Tool '${toolName}' not found in server '${serverName}'`);
@@ -88,11 +88,10 @@ export class ToolsReader {
 
     const content = await readFile(toolPath, 'utf-8');
 
-    // Extract function name (camelCase)
-    const functionMatch = content.match(/export async function (\w+)\(/);
-    const functionName = functionMatch?.[1] || toolName;
+    // Tool name is already in camelCase (matches function name)
+    const functionName = toolName;
 
-    // Extract JSDoc description
+    // Extract JSDoc description from the Method interface
     const jsdocMatch = content.match(/\/\*\*\n \* (.*?)\n \*\//);
     const description = jsdocMatch?.[1];
 

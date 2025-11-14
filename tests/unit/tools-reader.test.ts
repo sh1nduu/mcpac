@@ -10,33 +10,38 @@ describe('ToolsReader', () => {
     // Create test directory structure
     await mkdir(`${TEST_OUTPUT_DIR}/demo-filesystem`, { recursive: true });
 
-    // Create root index.ts
+    // Create _types.d.ts (lightweight root types)
     await writeFile(
-      `${TEST_OUTPUT_DIR}/index.ts`,
+      `${TEST_OUTPUT_DIR}/_types.d.ts`,
       `// Auto-generated - do not edit
 
-import * as demoFilesystem from './demo-filesystem/index.js';
+import type { DemoFilesystemServer } from './demo-filesystem/index.d.ts';
 
-export { demoFilesystem };
+export interface McpServers {
+  demoFilesystem: DemoFilesystemServer;
+}
 `,
     );
 
-    // Create server index.ts
+    // Create server index.d.ts
     await writeFile(
-      `${TEST_OUTPUT_DIR}/demo-filesystem/index.ts`,
+      `${TEST_OUTPUT_DIR}/demo-filesystem/index.d.ts`,
       `// Auto-generated - do not edit
 
-export * from './read_file.js';
-export * from './write_file.js';
+export type { ReadFileInput, ReadFileOutput, ReadFileMethod } from './readFile.d.ts';
+export type { WriteFileInput, WriteFileOutput, WriteFileMethod } from './writeFile.d.ts';
+
+export interface DemoFilesystemServer {
+  readFile: import('./readFile.d.ts').ReadFileMethod;
+  writeFile: import('./writeFile.d.ts').WriteFileMethod;
+}
 `,
     );
 
-    // Create tool file: read_file.ts
+    // Create tool file: readFile.d.ts
     await writeFile(
-      `${TEST_OUTPUT_DIR}/demo-filesystem/read_file.ts`,
+      `${TEST_OUTPUT_DIR}/demo-filesystem/readFile.d.ts`,
       `// Auto-generated - do not edit
-
-import { callMCPTool, type MCPToolResult } from '../_mcpac_runtime.js';
 
 export interface ReadFileInput {
   path: string;
@@ -44,40 +49,40 @@ export interface ReadFileInput {
   head?: number;
 }
 
-export interface ReadFileOutput extends MCPToolResult {}
+export interface ReadFileOutput {
+  content: Array<{type: "text", text: string}>;
+  isError: boolean;
+}
 
 /**
  * Read the complete contents of a file as text.
  */
-export async function readFile(
-  input: ReadFileInput
-): Promise<ReadFileOutput> {
-  return callMCPTool<ReadFileOutput>('demo-filesystem', 'read_file', input);
+export interface ReadFileMethod {
+  (args: ReadFileInput): Promise<ReadFileOutput>;
 }
 `,
     );
 
-    // Create tool file: write_file.ts
+    // Create tool file: writeFile.d.ts
     await writeFile(
-      `${TEST_OUTPUT_DIR}/demo-filesystem/write_file.ts`,
+      `${TEST_OUTPUT_DIR}/demo-filesystem/writeFile.d.ts`,
       `// Auto-generated - do not edit
-
-import { callMCPTool, type MCPToolResult } from '../_mcpac_runtime.js';
 
 export interface WriteFileInput {
   path: string;
   content: string;
 }
 
-export interface WriteFileOutput extends MCPToolResult {}
+export interface WriteFileOutput {
+  content: Array<{type: "text", text: string}>;
+  isError: boolean;
+}
 
 /**
  * Write content to a file.
  */
-export async function writeFile(
-  input: WriteFileInput
-): Promise<WriteFileOutput> {
-  return callMCPTool<WriteFileOutput>('demo-filesystem', 'write_file', input);
+export interface WriteFileMethod {
+  (args: WriteFileInput): Promise<WriteFileOutput>;
 }
 `,
     );
@@ -118,7 +123,7 @@ export async function writeFile(
     const reader = new ToolsReader(TEST_OUTPUT_DIR);
     const tools = await reader.listTools('demo-filesystem');
 
-    expect(tools).toEqual(['read_file', 'write_file']);
+    expect(tools).toEqual(['readFile', 'writeFile']);
   });
 
   test('listTools() should throw error for non-existing server', async () => {
@@ -131,16 +136,16 @@ export async function writeFile(
 
   test('getToolInfo() should return detailed tool information', async () => {
     const reader = new ToolsReader(TEST_OUTPUT_DIR);
-    const info = await reader.getToolInfo('demo-filesystem', 'read_file');
+    const info = await reader.getToolInfo('demo-filesystem', 'readFile');
 
     expect(info.serverName).toBe('demo-filesystem');
-    expect(info.toolName).toBe('read_file');
+    expect(info.toolName).toBe('readFile');
     expect(info.functionName).toBe('readFile');
     expect(info.description).toBe('Read the complete contents of a file as text.');
     expect(info.inputType).toBe('ReadFileInput');
     expect(info.outputType).toBe('ReadFileOutput');
-    expect(info.filePath).toContain('read_file.ts');
-    expect(info.fullContent).toContain('export async function readFile');
+    expect(info.filePath).toContain('readFile.d.ts');
+    expect(info.fullContent).toContain('export interface ReadFileMethod');
   });
 
   test('getToolInfo() should throw error for non-existing tool', async () => {
@@ -157,7 +162,7 @@ export async function writeFile(
 
     expect(location).not.toBeNull();
     expect(location?.serverName).toBe('demo-filesystem');
-    expect(location?.toolName).toBe('read_file');
+    expect(location?.toolName).toBe('readFile');
   });
 
   test('searchTool() should return null for non-existing function', async () => {
@@ -173,7 +178,7 @@ export async function writeFile(
 
     expect(location).not.toBeNull();
     expect(location?.serverName).toBe('demo-filesystem');
-    expect(location?.toolName).toBe('write_file');
+    expect(location?.toolName).toBe('writeFile');
   });
 
   test('getAllTools() should return all tools grouped by server', async () => {
@@ -181,7 +186,7 @@ export async function writeFile(
     const toolsMap = await reader.getAllTools();
 
     expect(toolsMap.size).toBe(1);
-    expect(toolsMap.get('demo-filesystem')).toEqual(['read_file', 'write_file']);
+    expect(toolsMap.get('demo-filesystem')).toEqual(['readFile', 'writeFile']);
   });
 
   test('getAllTools() should filter by server name', async () => {
@@ -189,7 +194,7 @@ export async function writeFile(
     const toolsMap = await reader.getAllTools('demo-filesystem');
 
     expect(toolsMap.size).toBe(1);
-    expect(toolsMap.get('demo-filesystem')).toEqual(['read_file', 'write_file']);
+    expect(toolsMap.get('demo-filesystem')).toEqual(['readFile', 'writeFile']);
   });
 
   test('getFunctionNames() should return camelCase function names', async () => {

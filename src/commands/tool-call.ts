@@ -105,10 +105,15 @@ async function executeToolCall(
 
   debugLog(`Fetching tool schema for: ${toolName}`);
   const tools = await client.listTools();
-  const toolDef = tools.find((t) => t.name === toolName);
+
+  // Convert camelCase tool name to snake_case for MCP server lookup
+  const mcpToolName = toolName.replace(/([A-Z])/g, '_$1').toLowerCase();
+  const toolDef = tools.find((t) => t.name === mcpToolName);
 
   if (!toolDef) {
-    throw new Error(`Tool '${toolName}' not found in server '${serverName}'`);
+    throw new Error(
+      `Tool '${toolName}' (MCP name: '${mcpToolName}') not found in server '${serverName}'`,
+    );
   }
 
   // 3. Parse arguments
@@ -140,8 +145,8 @@ async function executeToolCall(
   }
 
   // 5. Execute tool
-  debugLog(`Executing tool: ${serverName}.${toolName}`);
-  const result = await client.callTool(toolName, args);
+  debugLog(`Executing tool: ${serverName}.${toolName} (MCP: ${mcpToolName})`);
+  const result = await client.callTool(mcpToolName, args);
   debugVerbose(`Raw result: ${JSON.stringify(result, null, 2)}`);
 
   // 6. Format and output result
