@@ -1,4 +1,5 @@
 import type { MCPManager } from '../mcp/manager.js';
+import { getNamingManager } from '../naming/index.js';
 import { output } from '../utils/output.js';
 import { CodeGenerator } from './codegen.js';
 import { FilesystemManager, type GenerateOptions } from './filesystem.js';
@@ -8,6 +9,7 @@ export class Generator {
   private parser: SchemaParser;
   private codegen: CodeGenerator;
   private fs: FilesystemManager;
+  private naming = getNamingManager();
 
   constructor(
     private manager: MCPManager,
@@ -37,8 +39,10 @@ export class Generator {
     const successfulTools: ToolDefinition[] = [];
     for (const tool of tools) {
       try {
+        const ctx = this.naming.getToolContext(serverName, tool.toolName);
         const typeCode = await this.codegen.generateToolTypeDefinition(tool);
-        await this.fs.writeToolTypeDefinition(serverName, tool.toolName, typeCode);
+        // Use safe filename (camelCase) for filesystem
+        await this.fs.writeToolTypeDefinition(serverName, ctx.tool.file, typeCode);
         successfulTools.push(tool);
         output.verbose(`  ✓ ${tool.toolName}`);
       } catch (error) {

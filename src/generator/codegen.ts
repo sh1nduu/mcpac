@@ -1,4 +1,5 @@
 import { compile } from 'json-schema-to-typescript';
+import { getNamingManager, isValidIdentifier } from '../naming/index.js';
 import { VERSION } from '../version.js';
 import type { ToolDefinition } from './parser.js';
 import { loadRuntimeTemplate } from './templates/loadTemplate.macro.ts' with { type: 'macro' };
@@ -10,13 +11,16 @@ export interface GeneratedCode {
 }
 
 export class CodeGenerator {
+  private naming = getNamingManager();
+
   /**
    * Generate TypeScript code from tool definition
    */
   async generateToolCode(tool: ToolDefinition): Promise<GeneratedCode> {
-    const inputTypeName = this.toTypeName(tool.toolName, 'Input');
-    const outputTypeName = this.toTypeName(tool.toolName, 'Output');
-    const functionName = this.toCamelCase(tool.toolName);
+    const ctx = this.naming.getToolContext(tool.serverName, tool.toolName);
+    const inputTypeName = `${ctx.tool.type}Input`;
+    const outputTypeName = `${ctx.tool.type}Output`;
+    const functionName = ctx.tool.property;
 
     // Generate type definition from inputSchema
     const inputTypeCode = await this.generateInputType(tool.inputSchema, inputTypeName);
@@ -76,16 +80,10 @@ export class CodeGenerator {
 
   /**
    * Generate createRuntime implementation based on available tools
+   * IMPORTANT: Uses original MCP names throughout (no conversion)
    * @private
    */
   private generateCreateRuntimeImplementation(allTools: ToolDefinition[]): string {
-    // Group tools by server and collect all permission IDs
-    const permissionIds: string[] = [];
-    for (const tool of allTools) {
-      const serverNameCamel = this.toCamelCase(tool.serverName.replace(/-/g, '_'));
-      permissionIds.push(`${serverNameCamel}.${this.toCamelCase(tool.toolName)}`);
-    }
-
     const lines: string[] = [];
 
     lines.push('/**');
@@ -94,7 +92,9 @@ export class CodeGenerator {
       ' * Establishes permission boundary and returns runtime object with nested server.tool() access.',
     );
     lines.push(' *');
-    lines.push(' * @param permissions - Array of permission IDs in "server.tool" format');
+    lines.push(
+      ' * @param permissions - Array of permission IDs in "server.tool" format (original MCP names)',
+    );
     lines.push(' * @returns Runtime object with granted permissions');
     lines.push(' */');
     lines.push('export function createRuntime(permissions: string[]): any {');
@@ -107,13 +107,16 @@ export class CodeGenerator {
       const tool = allTools[i];
       if (!tool) continue; // Should never happen, but satisfies TypeScript
 
-      const functionName = this.toCamelCase(tool.toolName);
-      const serverNameCamel = this.toCamelCase(tool.serverName.replace(/-/g, '_'));
-      const permissionId = `${serverNameCamel}.${functionName}`;
+      const ctx = this.naming.getToolContext(tool.serverName, tool.toolName);
+
+      // CRITICAL: Use original MCP names for permission ID
+      // No conversion - preserve exactly as MCP server returns them
+      const permissionId = ctx.permission.mcp; // e.g., 'filesystem.read_file' or 'everything.printEnv'
       const comma = i < allTools.length - 1 ? ',' : '';
 
+      // Permission ID and MCP call both use original names
       lines.push(
-        `    '${permissionId}': async (input: any) => callMCPTool('${tool.serverName}', '${tool.toolName}', input)${comma}`,
+        `    '${permissionId}': async (input: any) => callMCPTool('${ctx.server.mcp}', '${ctx.tool.mcp}', input)${comma}`,
       );
     }
 
@@ -175,37 +178,11 @@ export class CodeGenerator {
   }
 
   /**
-   * Convert tool name to PascalCase type name
-   * Example: read_file → ReadFileInput
-   */
-  private toTypeName(toolName: string, suffix: string): string {
-    const pascal = toolName
-      .split('_')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join('');
-    return pascal + suffix;
-  }
-
-  /**
-   * Convert tool name to camelCase function name
-   * Example: read_file → readFile
-   */
-  toCamelCase(toolName: string): string {
-    const parts = toolName.split('_');
-    return (
-      parts[0] +
-      parts
-        .slice(1)
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-        .join('')
-    );
-  }
-
-  /**
    * Generate server's index.ts
+   * Note: toolNames should be the safe file names (camelCase)
    */
-  generateServerIndex(toolNames: string[]): string {
-    const exports = toolNames.map((name) => `export * from './${name}.js';`).join('\n');
+  generateServerIndex(toolFileNames: string[]): string {
+    const exports = toolFileNames.map((fileName) => `export * from './${fileName}.js';`).join('\n');
 
     return `// Auto-generated - do not edit\n\n${exports}\n`;
   }
@@ -215,8 +192,9 @@ export class CodeGenerator {
    * Returns only type definitions without implementation code
    */
   async generateToolTypeDefinition(tool: ToolDefinition): Promise<string> {
-    const inputTypeName = this.toTypeName(tool.toolName, 'Input');
-    const outputTypeName = this.toTypeName(tool.toolName, 'Output');
+    const ctx = this.naming.getToolContext(tool.serverName, tool.toolName);
+    const inputTypeName = `${ctx.tool.type}Input`;
+    const outputTypeName = `${ctx.tool.type}Output`;
 
     // Generate type definition from inputSchema
     const inputTypeCode = await this.generateInputType(tool.inputSchema, inputTypeName);
@@ -231,7 +209,8 @@ export class CodeGenerator {
     const description = tool.description
       ? `/**\n * ${tool.description.split('\n').join('\n * ')}\n */\n`
       : '';
-    const methodTypeCode = `${description}export interface ${this.toTypeName(tool.toolName, 'Method')} {
+    const methodTypeName = `${ctx.tool.type}Method`;
+    const methodTypeCode = `${description}export interface ${methodTypeName} {
   (args: ${inputTypeName}): Promise<${outputTypeName}>;
 }\n`;
 
@@ -240,31 +219,41 @@ export class CodeGenerator {
 
   /**
    * Generate index.d.ts for a server (aggregates all tool types)
+   * IMPORTANT: Uses original MCP tool names (may require string literals)
    */
   generateServerIndexTypes(serverName: string, tools: ToolDefinition[]): string {
-    const camelServerName = this.toCamelCase(serverName.replace(/-/g, '_'));
+    const serverNames = this.naming.getServerNames(serverName);
 
     // Export all types from tool files
     const typeExports = tools
       .map((tool) => {
-        const inputTypeName = this.toTypeName(tool.toolName, 'Input');
-        const outputTypeName = this.toTypeName(tool.toolName, 'Output');
-        const methodTypeName = this.toTypeName(tool.toolName, 'Method');
-        const functionName = this.toCamelCase(tool.toolName);
-        return `export type { ${inputTypeName}, ${outputTypeName}, ${methodTypeName} } from './${functionName}.d.ts';`;
+        const ctx = this.naming.getToolContext(serverName, tool.toolName);
+        const inputTypeName = `${ctx.tool.type}Input`;
+        const outputTypeName = `${ctx.tool.type}Output`;
+        const methodTypeName = `${ctx.tool.type}Method`;
+        const fileName = ctx.tool.file; // camelCase for filesystem
+        return `export type { ${inputTypeName}, ${outputTypeName}, ${methodTypeName} } from './${fileName}.d.ts';`;
       })
       .join('\n');
 
-    // Create server interface
+    // Create server interface with original MCP tool names as properties
     const methods = tools
       .map((tool) => {
-        const functionName = this.toCamelCase(tool.toolName);
-        const methodTypeName = this.toTypeName(tool.toolName, 'Method');
-        return `  ${functionName}: import('./${functionName}.d.ts').${methodTypeName};`;
+        const ctx = this.naming.getToolContext(serverName, tool.toolName);
+        const originalToolName = ctx.tool.mcp; // Original MCP name
+        const methodTypeName = `${ctx.tool.type}Method`;
+        const fileName = ctx.tool.file;
+
+        // Use string literal if not a valid TypeScript identifier
+        const propertyKey = isValidIdentifier(originalToolName)
+          ? originalToolName
+          : `"${originalToolName}"`;
+
+        return `  ${propertyKey}: import('./${fileName}.d.ts').${methodTypeName};`;
       })
       .join('\n');
 
-    const serverInterface = `\nexport interface ${camelServerName.charAt(0).toUpperCase() + camelServerName.slice(1)}Server {\n${methods}\n}\n`;
+    const serverInterface = `\nexport interface ${serverNames.type}Server {\n${methods}\n}\n`;
 
     return `// Auto-generated - do not edit\n\n${typeExports}${serverInterface}`;
   }
@@ -306,6 +295,7 @@ declare namespace MCPaC {
   /**
    * Generate type definitions file (_types.d.ts) for capability-based permissions
    * Creates McpServers interface and McpRequires type alias (lightweight version)
+   * IMPORTANT: Uses original MCP server names (may require string literals)
    */
   generateTypeDefinitions(allTools: ToolDefinition[]): string {
     // Group tools by server
@@ -323,18 +313,21 @@ declare namespace MCPaC {
     // Import server type definitions
     const serverImports = Array.from(serverGroups.keys())
       .map((serverName) => {
-        const camelName = this.toCamelCase(serverName.replace(/-/g, '_'));
-        const pascalName = camelName.charAt(0).toUpperCase() + camelName.slice(1);
-        return `import type { ${pascalName}Server } from './${serverName}/index.d.ts';`;
+        const names = this.naming.getServerNames(serverName);
+        return `import type { ${names.type}Server } from './${serverName}/index.d.ts';`;
       })
       .join('\n');
 
     // Create McpServers interface by referencing imported server types
+    // Use original MCP server names (with hyphens if present)
     const serverInterfaces = Array.from(serverGroups.keys())
       .map((serverName) => {
-        const camelName = this.toCamelCase(serverName.replace(/-/g, '_'));
-        const pascalName = camelName.charAt(0).toUpperCase() + camelName.slice(1);
-        return `  ${camelName}: ${pascalName}Server;`;
+        const names = this.naming.getServerNames(serverName);
+
+        // Use string literal if not a valid TypeScript identifier
+        const propertyKey = isValidIdentifier(names.mcp) ? names.mcp : `"${names.mcp}"`;
+
+        return `  ${propertyKey}: ${names.type}Server;`;
       })
       .join('\n');
 

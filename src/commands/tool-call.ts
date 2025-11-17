@@ -27,7 +27,10 @@ interface CallOptions {
 export function createToolCallCommand(): Command {
   const command = new Command('call')
     .description('Call a generated tool function directly')
-    .argument('<function_name>', 'Name of the generated function (camelCase)')
+    .argument(
+      '<function_name>',
+      'Name of the MCP tool (original format, e.g., read_file or printEnv)',
+    )
     .option('--json <string>', 'Arguments as JSON string')
     .option('--stdin', 'Read arguments from stdin as JSON')
     .option('-s, --server <name>', 'Specify server if function name is ambiguous')
@@ -106,14 +109,12 @@ async function executeToolCall(
   debugLog(`Fetching tool schema for: ${toolName}`);
   const tools = await client.listTools();
 
-  // Convert camelCase tool name to snake_case for MCP server lookup
-  const mcpToolName = toolName.replace(/([A-Z])/g, '_$1').toLowerCase();
-  const toolDef = tools.find((t) => t.name === mcpToolName);
+  // No conversion needed - use original MCP tool name directly
+  // The naming system ensures tool names are preserved as-is
+  const toolDef = tools.find((t) => t.name === toolName);
 
   if (!toolDef) {
-    throw new Error(
-      `Tool '${toolName}' (MCP name: '${mcpToolName}') not found in server '${serverName}'`,
-    );
+    throw new Error(`Tool '${toolName}' not found in server '${serverName}'`);
   }
 
   // 3. Parse arguments
@@ -145,8 +146,8 @@ async function executeToolCall(
   }
 
   // 5. Execute tool
-  debugLog(`Executing tool: ${serverName}.${toolName} (MCP: ${mcpToolName})`);
-  const result = await client.callTool(mcpToolName, args);
+  debugLog(`Executing tool: ${serverName}.${toolName}`);
+  const result = await client.callTool(toolName, args);
   debugVerbose(`Raw result: ${JSON.stringify(result, null, 2)}`);
 
   // 6. Format and output result

@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Centralized Naming Management System** (`src/naming/`)
+  - Single source of truth for all naming conversions
+  - Immutable name variants with automatic validation
+  - Built-in caching for performance optimization
+  - Comprehensive unit test coverage (25 tests)
+
+### Changed (BREAKING)
+- **Tool and server names now use original MCP names without conversion**
+  - Permission IDs use exact MCP tool names (e.g., `filesystem.read_file` instead of `filesystem.readFile`)
+  - Server names with hyphens are preserved (e.g., `demo-filesystem` not `demoFilesystem`)
+  - TypeScript properties match MCP names (may require bracket notation for non-identifiers)
+  - Generated `.d.ts` filenames remain camelCase for filesystem compatibility
+  - Type names remain PascalCase following TypeScript conventions
+
+- **Simplified permission system**
+  - No format conversion between user and MCP permissions
+  - Permissions use original MCP tool names directly
+  - User code: `declare const runtime: MCPaC.McpRequires<['filesystem.read_file']>`
+  - CLI: `--grant filesystem.read_file`
+
+- **Migration required for existing users**
+  ```typescript
+  // Before (0.3.0): Automatic conversion
+  declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+  await runtime.filesystem.readFile({ path: '/data.txt' });
+
+  // After (0.4.0): Original MCP names
+  declare const runtime: MCPaC.McpRequires<['filesystem.read_file']>;
+  await runtime.filesystem.read_file({ path: '/data.txt' });
+  // or with bracket notation:
+  await runtime.filesystem["read_file"]({ path: '/data.txt' });
+  ```
+
+### Removed (BREAKING)
+- Automatic camelCase conversion for tool names
+- `permissionToMcpFormat()` function from `ipc-executor.ts`
+- `toKebabCase()` function from `ipc-executor.ts`
+- Scattered naming conversion functions throughout codebase
+
+### Migration Guide
+1. **Update permission declarations** to use original MCP tool names
+2. **Regenerate all code**: Run `mcpac generate` to regenerate type definitions
+3. **Update tool calls** to use original names or bracket notation
+4. **Review custom scripts** that reference tool names
+
+Example MCP tool name formats:
+- snake_case: `read_file`, `list_directory` (traditional MCP servers)
+- camelCase: `printEnv`, `getTinyImage` (e.g., @modelcontextprotocol/server-everything)
+- kebab-case: Use bracket notation for server names like `test-fs`
+
 ## [0.3.0] - 2025-11-15
 
 ### Added

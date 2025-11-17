@@ -80,20 +80,15 @@ export class FilesystemManager {
 
   /**
    * Write tool type definition file (.d.ts)
+   * Note: safeFileName should be the filesystem-safe name (camelCase) from NamingManager
    */
   async writeToolTypeDefinition(
     serverName: string,
-    toolName: string,
+    safeFileName: string,
     typeCode: string,
   ): Promise<void> {
     const serverDir = await this.prepareServerDirectory(serverName);
-    const camelToolName = toolName.includes('_')
-      ? toolName
-          .split('_')
-          .map((p, i) => (i === 0 ? p : p.charAt(0).toUpperCase() + p.slice(1)))
-          .join('')
-      : toolName;
-    const filePath = join(serverDir, `${camelToolName}.d.ts`);
+    const filePath = join(serverDir, `${safeFileName}.d.ts`);
     await writeFile(filePath, typeCode, 'utf-8');
   }
 

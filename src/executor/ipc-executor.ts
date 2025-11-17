@@ -27,40 +27,15 @@ function debugError(...args: unknown[]): void {
 }
 
 /**
- * Convert camelCase to kebab-case (hyphenated)
- * e.g., "testFs" -> "test-fs"
- */
-function toKebabCase(str: string): string {
-  return str.replace(/([A-Z])/g, '-$1').toLowerCase();
-}
-
-/**
- * Convert camelCase permission IDs to MCP format
- * e.g., "testFs.readFile" -> "test-fs.read_file"
+ * REMOVED: Permission format conversion is no longer needed.
+ * The naming system now preserves original MCP names throughout,
+ * eliminating the need for camelCase → snake_case conversion.
  *
- * This is needed because:
- * - CLI and user code use camelCase: testFs.readFile
- * - MCP server names may have hyphens: test-fs
- * - MCP tool names are snake_case: read_file
- * - IPCServer constructs permission IDs from MCP names: test-fs.read_file
- *
- * @param permission - Permission ID in camelCase format
- * @param serverNameMap - Mapping from camelCase server names to original MCP server names
+ * Permissions are now used in their original MCP format directly:
+ * - User provides: 'filesystem.read_file' (original MCP name)
+ * - IPCServer expects: 'filesystem.read_file' (same)
+ * - No conversion needed!
  */
-function permissionToMcpFormat(permission: string, serverNameMap: Map<string, string>): string {
-  const parts = permission.split('.');
-  if (parts.length < 2) return permission;
-
-  const [serverCamel, ...toolParts] = parts;
-  if (!serverCamel || toolParts.length === 0) return permission;
-
-  // Try to find the original server name from the map
-  const originalServerName = serverNameMap.get(serverCamel) || toKebabCase(serverCamel);
-
-  const camelTool = toolParts.join('.');
-  const snakeTool = camelTool.replace(/([A-Z])/g, '_$1').toLowerCase();
-  return `${originalServerName}.${snakeTool}`;
-}
 
 export interface IPCExecuteOptions {
   mcpManager: MCPManager;
@@ -143,26 +118,15 @@ export class IPCExecutor {
       await writeFile(tempFile, modifiedCode, 'utf-8');
       debugLog(`Modified code written to ${tempFile}`);
 
-      // Build server name mapping (camelCase -> original MCP server name)
-      const serverNames = await options.mcpManager.listServers();
-      const serverNameMap = new Map<string, string>();
-      for (const serverName of serverNames) {
-        // Convert server name to camelCase for mapping
-        const camelName = serverName
-          .replace(/-/g, '_')
-          .replace(/_([a-z])/g, (_: string, letter: string) => letter.toUpperCase());
-        serverNameMap.set(camelName, serverName);
-        debugLog(`Server name mapping: ${camelName} -> ${serverName}`);
-      }
-
-      // Convert permissions to MCP format (original server name + snake_case tool name)
-      const mcpFormatPermissions = grantedPermissions.map((p) =>
-        permissionToMcpFormat(p, serverNameMap),
-      );
-      debugLog(`Converted permissions to MCP format:`, mcpFormatPermissions);
+      // No conversion needed - use original MCP permission names directly
+      // The naming system ensures consistency throughout:
+      // - User provides: 'filesystem.read_file' or 'everything.printEnv'
+      // - Generated code expects: same format
+      // - IPCServer validates: same format
+      debugLog(`Using permissions in original MCP format:`, grantedPermissions);
 
       // Create IPC server with trusted permissions from host side
-      const ipcServer = new IPCServer(options.mcpManager, undefined, mcpFormatPermissions);
+      const ipcServer = new IPCServer(options.mcpManager, undefined, grantedPermissions);
 
       try {
         // Start IPC server
@@ -341,25 +305,10 @@ export class IPCExecutor {
       await writeFile(tempFile, modifiedCode, 'utf-8');
       debugLog(`Modified code written to ${tempFile}`);
 
-      // Build server name mapping (camelCase -> original MCP server name)
-      const serverNames = await options.mcpManager.listServers();
-      const serverNameMap = new Map<string, string>();
-      for (const serverName of serverNames) {
-        // Convert server name to camelCase for mapping
-        const camelName = serverName
-          .replace(/-/g, '_')
-          .replace(/_([a-z])/g, (_: string, letter: string) => letter.toUpperCase());
-        serverNameMap.set(camelName, serverName);
-        debugLog(`Server name mapping: ${camelName} -> ${serverName}`);
-      }
+      // No conversion needed - use original MCP permission names directly
+      debugLog(`Using permissions in original MCP format:`, grantedPermissions);
 
-      // Convert permissions to MCP format (original server name + snake_case tool name)
-      const mcpFormatPermissions = grantedPermissions.map((p) =>
-        permissionToMcpFormat(p, serverNameMap),
-      );
-      debugLog(`Converted permissions to MCP format:`, mcpFormatPermissions);
-
-      const ipcServer = new IPCServer(options.mcpManager, undefined, mcpFormatPermissions);
+      const ipcServer = new IPCServer(options.mcpManager, undefined, grantedPermissions);
 
       try {
         await ipcServer.start();
