@@ -13,27 +13,28 @@ MCPaC converts MCP servers into TypeScript libraries that you can execute as cod
 ## Quick Start Workflow
 
 1️⃣  Add an MCP Server
-   $ mcpac server add filesystem --command npx \\
-       --args @modelcontextprotocol/server-filesystem \\
-       --args ./workspace
+   $ mcpac server add everything --command npx \\
+       --args -y \\
+       --args @modelcontextprotocol/server-everything
 
 2️⃣  Generate TypeScript Code
    $ mcpac generate
 
 3️⃣  Explore Available Tools (Optional)
-   $ mcpac tools list -s filesystem          # See functions for specific server
+   $ mcpac tools list -s everything          # See functions for specific server
    $ mcpac tools list                        # See all functions
-   $ mcpac tools describe listDirectory      # View function details
-   $ mcpac tools call readFile --path ./README.md  # Call tool directly
+   $ mcpac tools describe echo               # View function details
+   $ mcpac tools call echo --message "Hello"  # Call tool directly
 
 4️⃣  Execute Code with MCP Tools
    $ mcpac execute -c "
-     declare const runtime: MCPaC.McpRequires<['filesystem.listDirectory']>;
-     const result = await runtime.filesystem.listDirectory({ path: '.' });
+     declare const runtime: MCPaC.McpRequires<['everything.echo']>;
+     const result = await runtime.everything.echo({ message: 'Hello from MCPaC!' });
      console.log(result.content[0].text);
-   " --grant filesystem.listDirectory
+   " --grant everything.echo
 
    Note: MCPaC namespace provides type-safe access without explicit imports!
+   Note: Tool names use original MCP format (may be snake_case or camelCase)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -72,14 +73,17 @@ Key Features:
   • Capability-based permission system
 
 Example usage (recommended - MCPaC namespace):
-  declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+  declare const runtime: MCPaC.McpRequires<['everything.echo']>;
 
-  const result = await runtime.filesystem.readFile({ path: './data.txt' });
+  const result = await runtime.everything.echo({ message: 'Hello!' });
   const text = result.content.find(c => c.type === 'text')?.text;
 
 Alternative (explicit import):
   import type { McpRequires } from './servers/_types.js';
-  declare const runtime: McpRequires<['filesystem.readFile']>;
+  declare const runtime: McpRequires<['everything.echo']>;
+
+Important: Tool names use original MCP format (snake_case or camelCase).
+Check with 'mcpac tools list -s <server>' to see exact names.
 
 All tool calls return this structure:
   {
