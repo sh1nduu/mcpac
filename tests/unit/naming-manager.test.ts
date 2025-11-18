@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { NamingManager, resetNamingManager } from '../manager.js';
+import { NamingManager, resetNamingManager } from '../../src/naming/manager.js';
 
 describe('NamingManager', () => {
   let manager: NamingManager;

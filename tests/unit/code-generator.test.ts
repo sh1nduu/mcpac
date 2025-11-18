@@ -83,7 +83,7 @@ describe('CodeGenerator', () => {
     expect(generatedCode.typeDefinitions).toContain('extends MCPToolResult');
 
     // Check function code contains the function declaration
-    expect(generatedCode.functionCode).toContain('export async function readFile');
+    expect(generatedCode.functionCode).toContain('export async function read_file');
     expect(generatedCode.functionCode).toContain('callMCPTool');
   });
 
@@ -230,8 +230,8 @@ describe('CodeGenerator', () => {
 
       // Check server interface
       expect(indexTypeCode).toContain('export interface TestFilesystemServer');
-      expect(indexTypeCode).toContain('readFile:');
-      expect(indexTypeCode).toContain('writeFile:');
+      expect(indexTypeCode).toContain('read_file:');
+      expect(indexTypeCode).toContain('write_file:');
     });
 
     test('should generate global types with MCPaC namespace', () => {
@@ -274,7 +274,7 @@ describe('CodeGenerator', () => {
 
       // Check McpServers interface
       expect(typeDefsCode).toContain('export interface McpServers');
-      expect(typeDefsCode).toContain('testFilesystem: TestFilesystemServer');
+      expect(typeDefsCode).toContain('"test-filesystem": TestFilesystemServer');
 
       // Check it does NOT contain redundant type aliases
       expect(typeDefsCode).not.toContain('type testFilesystem_ReadFileInput');
