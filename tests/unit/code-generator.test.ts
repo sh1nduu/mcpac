@@ -220,12 +220,12 @@ describe('CodeGenerator', () => {
 
       const indexTypeCode = generator.generateServerIndexTypes(TEST_SERVER_NAME, toolDefs);
 
-      // Check type exports
+      // Check type exports with original MCP tool names as filenames
       expect(indexTypeCode).toContain(
-        'export type { ReadFileInput, ReadFileOutput, ReadFileMethod }',
+        "export type { ReadFileInput, ReadFileOutput, ReadFileMethod } from './read_file.d.ts'",
       );
       expect(indexTypeCode).toContain(
-        'export type { WriteFileInput, WriteFileOutput, WriteFileMethod }',
+        "export type { WriteFileInput, WriteFileOutput, WriteFileMethod } from './write_file.d.ts'",
       );
 
       // Check server interface

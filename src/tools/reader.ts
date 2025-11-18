@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 export interface ToolInfo {
   serverName: string;
-  toolName: string; // camelCase (file name, e.g., 'listDirectory')
-  functionName: string; // camelCase (function name, same as toolName)
+  toolName: string; // Original MCP tool name (file name, e.g., 'read_file', 'printEnv')
+  functionName: string; // Same as toolName (original MCP name)
   description?: string;
   inputType: string;
   outputType: string;
@@ -55,7 +55,7 @@ export class ToolsReader {
 
   /**
    * List all tool names for a given server
-   * Returns tool names in camelCase (e.g., 'readFile')
+   * Returns original MCP tool names (e.g., 'read_file', 'printEnv')
    */
   async listTools(serverName: string): Promise<string[]> {
     const serverDir = join(this.outputDir, serverName);
@@ -88,7 +88,7 @@ export class ToolsReader {
 
     const content = await readFile(toolPath, 'utf-8');
 
-    // Tool name is already in camelCase (matches function name)
+    // Tool name is the original MCP name (matches function name)
     const functionName = toolName;
 
     // Extract JSDoc description from the Method interface
@@ -163,7 +163,7 @@ export class ToolsReader {
 
   /**
    * Extract function names from tool files
-   * Converts snake_case tool names to camelCase function names
+   * Returns original MCP tool names (no conversion)
    */
   async getFunctionNames(serverName: string): Promise<string[]> {
     const tools = await this.listTools(serverName);

@@ -179,7 +179,7 @@ export class CodeGenerator {
 
   /**
    * Generate server's index.ts
-   * Note: toolNames should be the safe file names (camelCase)
+   * Note: toolNames should be the original MCP tool names
    */
   generateServerIndex(toolFileNames: string[]): string {
     const exports = toolFileNames.map((fileName) => `export * from './${fileName}.js';`).join('\n');
@@ -231,7 +231,7 @@ export class CodeGenerator {
         const inputTypeName = `${ctx.tool.type}Input`;
         const outputTypeName = `${ctx.tool.type}Output`;
         const methodTypeName = `${ctx.tool.type}Method`;
-        const fileName = ctx.tool.file; // camelCase for filesystem
+        const fileName = ctx.tool.mcp; // Original MCP tool name
         return `export type { ${inputTypeName}, ${outputTypeName}, ${methodTypeName} } from './${fileName}.d.ts';`;
       })
       .join('\n');
@@ -242,7 +242,7 @@ export class CodeGenerator {
         const ctx = this.naming.getToolContext(serverName, tool.toolName);
         const originalToolName = ctx.tool.mcp; // Original MCP name
         const methodTypeName = `${ctx.tool.type}Method`;
-        const fileName = ctx.tool.file;
+        const fileName = ctx.tool.mcp; // Use original name for filename
 
         // Use string literal if not a valid TypeScript identifier
         const propertyKey = isValidIdentifier(originalToolName)

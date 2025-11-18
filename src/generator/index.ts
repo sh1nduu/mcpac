@@ -41,8 +41,8 @@ export class Generator {
       try {
         const ctx = this.naming.getToolContext(serverName, tool.toolName);
         const typeCode = await this.codegen.generateToolTypeDefinition(tool);
-        // Use safe filename (camelCase) for filesystem
-        await this.fs.writeToolTypeDefinition(serverName, ctx.tool.file, typeCode);
+        // Use original MCP tool name for filename
+        await this.fs.writeToolTypeDefinition(serverName, ctx.tool.mcp, typeCode);
         successfulTools.push(tool);
         output.verbose(`  ✓ ${tool.toolName}`);
       } catch (error) {

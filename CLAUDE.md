@@ -142,11 +142,11 @@ mcpac tools call <function_name> [arguments]
 #### 1. Named Flags (Simple Arguments)
 Best for tools with simple, flat argument structures:
 ```bash
-# Read a file
-mcpac tools call readFile --path ./data.txt
+# Read a file (use original MCP tool name)
+mcpac tools call read_file --path ./data.txt
 
 # Multiple arguments
-mcpac tools call searchFiles --pattern "*.ts" --recursive true --maxDepth 5
+mcpac tools call search_files --pattern "*.ts" --recursive true --maxDepth 5
 ```
 
 **Type conversion:**
@@ -159,10 +159,10 @@ mcpac tools call searchFiles --pattern "*.ts" --recursive true --maxDepth 5
 Best for complex nested structures or arrays:
 ```bash
 # Simple JSON
-mcpac tools call readFile --json '{"path":"./data.txt"}'
+mcpac tools call read_file --json '{"path":"./data.txt"}'
 
 # Complex nested structure
-mcpac tools call complexTool --json '{
+mcpac tools call complex_tool --json '{
   "config": {
     "nested": {"value": 123},
     "array": ["item1", "item2"]
@@ -195,14 +195,14 @@ echo '{"query":"SELECT * FROM users"}' | mcpac tools call runQuery --stdin
 #### text (default)
 Extracts and displays text content only:
 ```bash
-mcpac tools call readFile --path ./data.txt
+mcpac tools call read_file --path ./data.txt
 # Output: File contents here...
 ```
 
 #### json
 Full structured output with metadata:
 ```bash
-mcpac tools call readFile --path ./data.txt --output-format json
+mcpac tools call read_file --path ./data.txt --output-format json
 # Output:
 # {
 #   "success": true,
@@ -215,7 +215,7 @@ mcpac tools call readFile --path ./data.txt --output-format json
 #### raw
 Raw MCP response format:
 ```bash
-mcpac tools call readFile --path ./data.txt --output-format raw
+mcpac tools call read_file --path ./data.txt --output-format raw
 # Output:
 # {
 #   "content": [...],
@@ -235,24 +235,24 @@ mcpac tools call readFile --path ./data.txt --output-format raw
 ### Examples
 
 ```bash
-# Simple file read
-mcpac tools call readFile --path ./README.md
+# Simple file read (use original MCP tool name)
+mcpac tools call read_file --path ./README.md
 
 # With server specification (if multiple servers have same function)
-mcpac tools call getData --server api-server --id 123
+mcpac tools call get_data --server api-server --id 123
 
 # Complex query with JSON
-mcpac tools call searchDatabase --json '{
+mcpac tools call search_database --json '{
   "query": "users",
   "filters": {"status": "active"},
   "limit": 10
 }'
 
 # Pipeline integration for scripting
-cat user_ids.json | mcpac tools call batchProcess --stdin --quiet
+cat user_ids.json | mcpac tools call batch_process --stdin --quiet
 
 # Get structured output for parsing
-result=$(mcpac tools call getVersion --output-format json -q)
+result=$(mcpac tools call get_version --output-format json -q)
 version=$(echo $result | jq -r '.content[0].text')
 ```
 
@@ -267,12 +267,12 @@ version=$(echo $result | jq -r '.content[0].text')
 **Error output:**
 ```bash
 # Missing required argument
-$ mcpac tools call readFile
-Error: Invalid arguments for tool 'readFile':
+$ mcpac tools call read_file
+Error: Invalid arguments for tool 'read_file':
   - Missing required property: 'path'
 
 # Tool execution error
-$ mcpac tools call readFile --path ./nonexistent.txt
+$ mcpac tools call read_file --path ./nonexistent.txt
 Error: Tool execution failed [filesystem.read_file]
 File not found: ./nonexistent.txt
 ```
@@ -315,17 +315,18 @@ File not found: ./nonexistent.txt
      ├── _types.d.ts             # Lightweight type aggregator (McpServers interface)
      ├── global.d.ts             # MCPaC ambient namespace (no-import usage)
      └── <serverName>/
-         ├── <toolName>.d.ts     # Individual tool type definitions
+         ├── <toolName>.d.ts     # Individual tool type definitions (original MCP names, e.g., read_file.d.ts)
          └── index.d.ts          # Server-level type aggregation
      ```
    - **Token Efficiency**: Tool types are split into separate `.d.ts` files, reducing context size for large projects
+   - **Filename Convention**: Tool files use original MCP tool names (e.g., `read_file.d.ts`, `printEnv.d.ts`)
 
 3. **Execution Layer** (`src/executor/`)
    - `ipc-executor.ts`: **Production executor** with IPC-based MCP communication
      - Used by `execute` command for all execution modes
      - Manages MCP connections in parent process via MCPManager
      - User code communicates via Unix Domain Socket (JSON-RPC 2.0)
-     - **Permission conversion**: Converts camelCase to snake_case before passing to IPCServer
+     - **Permissions**: Uses original MCP tool names directly (no conversion)
      - Exports `ExecutionResult` interface
    - `context.ts`: Prepares execution environment with env vars (MCPAC_CONFIG_PATH, MCPAC_WORKSPACE)
    - `result.ts`: Handles exit codes, stdout/stderr (ResultHandler class)
@@ -377,14 +378,14 @@ UNTRUSTED
 1. **Host-Side Enforcement**: All permission checks happen in IPCServer (trusted zone)
 2. **No User-Side Checks**: User code has type safety but cannot bypass permissions
 3. **Single Source of Truth**: Permissions stored in IPCServer constructor, not sent via IPC
-4. **Permission Format Conversion**: IPCExecutor converts camelCase (CLI) to snake_case (MCP) before storing
+4. **Original Tool Names**: Uses original MCP tool names throughout (no conversion)
 
 **Permission Flow:**
 ```
-1. CLI: --grant filesystem.readFile (camelCase)
-2. Executor: Convert → filesystem.read_file (snake_case)
+1. CLI: --grant filesystem.read_file (original MCP name)
+2. Executor: Store permissions as-is
 3. IPCServer: Store ["filesystem.read_file"] (trusted)
-4. User Code: rt.filesystem.readFile({...}) (type-safe)
+4. User Code: rt.filesystem.read_file({...}) or rt.filesystem["read_file"]({...}) (type-safe)
 5. Runtime: callMCPTool("filesystem", "read_file", {...})
 6. IPCClient: Send IPC request (no permission data)
 7. IPCServer: Check "filesystem.read_file" in stored permissions ✅
@@ -402,18 +403,21 @@ Users write capability-based code using the `MCPaC.McpRequires` ambient type (no
 
 **Recommended Pattern (MCPaC namespace - 1 line)**:
 ```typescript
-declare const runtime: MCPaC.McpRequires<['filesystem.readFile', 'github.createIssue']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.read_file', 'github.create_issue']>;
 
-const file = await runtime.filesystem.readFile({ path: '/data.txt' });
-await runtime.github.createIssue({ title: 'Bug', body: file.content[0].text });
+// Use original MCP tool names (with bracket notation if needed)
+const file = await runtime.filesystem.read_file({ path: '/data.txt' });
+// or: await runtime.filesystem["read_file"]({ path: '/data.txt' });
+
+await runtime.github.create_issue({ title: 'Bug', body: file.content[0].text });
 ```
 
 **Alternative Pattern (explicit import - 2 lines)**:
 ```typescript
 import type { McpRequires } from './servers/_types.d.ts';
-declare const runtime: McpRequires<['filesystem.readFile']>;
+declare const runtime: McpRequires<['filesystem.read_file']>;
 
-const file = await runtime.filesystem.readFile({ path: '/data.txt' });
+const file = await runtime.filesystem.read_file({ path: '/data.txt' });
 ```
 
 **Key Points**:
@@ -429,7 +433,7 @@ const file = await runtime.filesystem.readFile({ path: '/data.txt' });
 ```typescript
 const toolDef = {
   serverName: 'filesystem',
-  toolName: tool.name,
+  toolName: tool.name, // Original MCP name (e.g., 'read_file')
   description: tool.description,
   inputSchema: tool.inputSchema
 };
@@ -440,24 +444,18 @@ const toolDef = {
 result.content // => [{ type: "text", text: "..." }]
 ```
 
-**Permission Format Conversion**: camelCase (CLI/User) → snake_case (MCP/Internal)
+**Permission Format**: Original MCP tool names throughout (no conversion)
 ```typescript
-// User provides (CLI or type annotations)
-'filesystem.readFile'
-
-// IPCExecutor converts to
+// User provides (CLI or type annotations) - original MCP name
 'filesystem.read_file'
 
-// IPCServer checks against
+// IPCServer checks against (same format)
 this.grantedPermissions // ['filesystem.read_file']
 
-// Conversion function (in ipc-executor.ts)
-function permissionToSnakeCase(permission: string): string {
-  const [server, ...toolParts] = permission.split('.');
-  const camelTool = toolParts.join('.');
-  const snakeTool = camelTool.replace(/([A-Z])/g, '_$1').toLowerCase();
-  return `${server}.${snakeTool}`;
-}
+// User code accesses with original name
+runtime.filesystem.read_file({ path: '/data.txt' })
+// or with bracket notation:
+runtime.filesystem["read_file"]({ path: '/data.txt' })
 ```
 
 ## Testing Strategy
@@ -591,13 +589,14 @@ The project version is defined in two locations that must be kept in sync:
 4. **Client method is close()** - Not `disconnect()` (will error)
 5. **Error type must be Error object** - Not string in test expectations
 6. **Bytecode mode unavailable** - ESM + top-level await incompatible
-7. **Permission format conversion** - CLI uses camelCase (`filesystem.readFile`), IPCServer expects snake_case (`filesystem.read_file`)
+7. **Original MCP tool names** - CLI, filenames, and permissions all use original MCP names (e.g., `read_file`, `printEnv`) without conversion
 8. **Host-side permission enforcement** - Permission checks happen in IPCServer only, user-side code has no enforcement
 9. **Template loading via Bun.macro** - Runtime template embedded at bundle-time, not loaded at runtime (enables single executable)
 10. **IPC protocol has no permissions** - Permissions never sent via IPC, stored in IPCServer constructor (security)
 11. **Hierarchical .d.ts structure** - Types are split into `<server>/<tool>.d.ts` files for token efficiency; `_types.d.ts` is lightweight aggregator
-12. **MCPaC ambient namespace** - User code can use `MCPaC.McpRequires<[...]>` without imports (defined in `servers/global.d.ts`)
-13. **No implementation in .d.ts files** - Generated `.d.ts` files contain only type definitions; runtime logic is in `_mcpac_runtime.ts`
+12. **Filename convention** - Tool files named with original MCP names (e.g., `read_file.d.ts`, `printEnv.d.ts`), type names remain PascalCase
+13. **MCPaC ambient namespace** - User code can use `MCPaC.McpRequires<[...]>` without imports (defined in `servers/global.d.ts`)
+14. **No implementation in .d.ts files** - Generated `.d.ts` files contain only type definitions; runtime logic is in `_mcpac_runtime.ts`
 
 ## Documentation Updates
 
