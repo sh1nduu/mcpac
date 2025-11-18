@@ -12,7 +12,7 @@ export function toolsCommand(program: Command): void {
   // tools list [--server <name>] [--output <dir>]
   tools
     .command('list')
-    .description('List all exported functions from generated code')
+    .description('List all tools (shows original MCP names like read_file, printEnv)')
     .option('-s, --server <name>', 'Filter by specific server')
     .option('-o, --output <dir>', 'Generated code directory', './servers')
     .action(async (options) => {
@@ -67,7 +67,7 @@ export function toolsCommand(program: Command): void {
   // tools describe <function_name> [--server <name>] [--output <dir>]
   tools
     .command('describe <function_name>')
-    .description('Show detailed function signature and types')
+    .description('Show detailed tool definition (use original MCP name)')
     .option('-s, --server <name>', 'Filter by specific server')
     .option('-o, --output <dir>', 'Generated code directory', './servers')
     .action(async (functionName, options) => {
