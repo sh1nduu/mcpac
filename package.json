@@ -1,6 +1,6 @@
 {
   "name": "mcpac",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MCP as Code - Execute code with MCP servers as libraries",
   "type": "module",
   "bin": {

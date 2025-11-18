@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-18
+
 ### Added
 - **Centralized Naming Management System** (`src/naming/`)
   - Single source of truth for all naming conversions
@@ -57,6 +59,10 @@ Example MCP tool name formats:
 - snake_case: `read_file`, `list_directory` (traditional MCP servers)
 - camelCase: `printEnv`, `getTinyImage` (e.g., @modelcontextprotocol/server-everything)
 - kebab-case: Use bracket notation for server names like `test-fs`
+
+### Fixed
+- Test expectations updated to match snake_case tool naming convention
+- Relocated naming-manager tests from `src/naming/__tests__/` to `tests/unit/` for consistency
 
 ## [0.3.0] - 2025-11-15
 
