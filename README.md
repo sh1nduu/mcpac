@@ -87,7 +87,7 @@ https://github.com/sh1nduu/mcpac/releases
 ### macOS (Apple Silicon example)
 
 ```bash
-curl -L https://github.com/sh1nduu/mcpac/releases/download/v0.3.0/mcpac-0.3.0-darwin-arm64 -o mcpac
+curl -L https://github.com/sh1nduu/mcpac/releases/download/v0.4.0/mcpac-0.4.0-darwin-arm64 -o mcpac
 chmod +x mcpac
 sudo mv mcpac /usr/local/bin/
 mcpac --version
@@ -157,8 +157,8 @@ servers/
 ├── global.d.ts         # MCPaC ambient namespace (for mcpac execute)
 └── filesystem/
     ├── index.d.ts      # Server-level types
-    ├── readFile.d.ts   # Individual tool definitions
-    └── writeFile.d.ts
+    ├── read_file.d.ts  # Individual tool definitions (original MCP names)
+    └── write_file.d.ts
 ```
 
 ### 3. Write code
@@ -168,15 +168,15 @@ Create `example.ts`:
 ```ts
 // Recommended: MCPaC ambient namespace (for mcpac execute)
 // DO NOT create runtime yourself – it is injected at execution time.
-declare const runtime: MCPaC.McpRequires<['filesystem.readFile', 'filesystem.writeFile']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.read_file', 'filesystem.write_file']>;
 
 // Read file
-const readResult = await runtime.filesystem.readFile({ path: 'example.txt' });
+const readResult = await runtime.filesystem.read_file({ path: 'example.txt' });
 const text = readResult.content.find(c => c.type === 'text')?.text;
 console.log('File content:', text);
 
 // Write file
-await runtime.filesystem.writeFile({
+await runtime.filesystem.write_file({
   path: 'output.txt',
   content: 'Hello from MCPaC!'
 });
@@ -186,7 +186,7 @@ await runtime.filesystem.writeFile({
 
 ```bash
 mcpac execute -f example.ts \
-  --grant filesystem.readFile,filesystem.writeFile
+  --grant filesystem.read_file,filesystem.write_file
 ```
 
 If the requested tools in `McpRequires<...>` do not match the tools in `--grant`, execution is blocked.
@@ -201,7 +201,7 @@ MCPaC exposes types in two ways:
 
 ```ts
 // Available only when you run via `mcpac execute` after `mcpac generate`
-declare const runtime: MCPaC.McpRequires<['filesystem.readFile']>;
+declare const runtime: MCPaC.McpRequires<['filesystem.read_file']>;
 ```
 
 This relies on `servers/global.d.ts`:
@@ -221,7 +221,7 @@ declare namespace MCPaC {
 ```ts
 import type { McpRequires } from './servers/_types.js';
 
-declare const runtime: McpRequires<['filesystem.readFile']>;
+declare const runtime: McpRequires<['filesystem.read_file']>;
 ```
 
 Use this style if you want to reuse MCPaC’s generated types inside your own runtime or agent harness and are comfortable wiring up MCP connections and capability checks yourself. The primary supported path is still `mcpac execute`; this explicit-import style is an advanced/custom option.
@@ -234,8 +234,8 @@ Use this style if you want to reuse MCPaC’s generated types inside your own ru
 
 ```ts
 declare const runtime: MCPaC.McpRequires<[
-  'filesystem.listDirectory',
-  'filesystem.readFile'
+  'filesystem.list_directory',
+  'filesystem.read_file'
 ]>;
 ```
 
@@ -243,7 +243,7 @@ declare const runtime: MCPaC.McpRequires<[
 
 ```bash
 mcpac execute -f script.ts \
-  --grant filesystem.listDirectory,filesystem.readFile
+  --grant filesystem.list_directory,filesystem.read_file
 ```
 
 Rules:
@@ -306,28 +306,29 @@ mcpac tools list
 mcpac tools list -s <server-name>
 
 # Show detailed tool description (schema, examples, etc.)
+# Use original MCP tool name (e.g., read_file, not readFile)
 mcpac tools describe <function_name>
 ```
 
 ### Direct Tool Invocation (no code)
 
 ```bash
-# Call tool with flags
-mcpac tools call readFile --path example.txt
+# Call tool with flags (use original MCP tool name)
+mcpac tools call read_file --path example.txt
 
 # Call with JSON string
-mcpac tools call readFile --json '{"path":"example.txt"}'
+mcpac tools call read_file --json '{"path":"example.txt"}'
 
 # Call with JSON from stdin
-echo '{"path":"example.txt"}' | mcpac tools call readFile --stdin
+echo '{"path":"example.txt"}' | mcpac tools call read_file --stdin
 ```
 
 Output formats:
 
 ```bash
-mcpac tools call readFile --path example.txt --output-format text  # Default
-mcpac tools call readFile --path example.txt --output-format json  # With metadata
-mcpac tools call readFile --path example.txt --output-format raw   # Raw MCP response
+mcpac tools call read_file --path example.txt --output-format text  # Default
+mcpac tools call read_file --path example.txt --output-format json  # With metadata
+mcpac tools call read_file --path example.txt --output-format raw   # Raw MCP response
 ```
 
 Extra flags:
@@ -350,17 +351,17 @@ Exit codes:
 mcpac execute -f script.ts --grant server.tool1,server.tool2
 
 # Execute inline code
-mcpac execute -c "/* code here */" --grant filesystem.readFile
+mcpac execute -c "/* code here */" --grant filesystem.read_file
 
 # Execute from stdin
-cat script.ts | mcpac execute --stdin --grant filesystem.readFile
+cat script.ts | mcpac execute --stdin --grant filesystem.read_file
 
 # Skip type checking (faster, but less safe)
-mcpac execute -f script.ts --no-typecheck --grant filesystem.readFile
+mcpac execute -f script.ts --no-typecheck --grant filesystem.read_file
 
 # Verbose / quiet
-mcpac execute -f script.ts -v --grant filesystem.readFile
-mcpac execute -f script.ts -q --grant filesystem.readFile
+mcpac execute -f script.ts -v --grant filesystem.read_file
+mcpac execute -f script.ts -q --grant filesystem.read_file
 ```
 
 ---
@@ -370,19 +371,19 @@ mcpac execute -f script.ts -q --grant filesystem.readFile
 ### Example 1: File Operations
 
 ```ts
-// Declare required permissions
+// Declare required permissions (use original MCP tool names)
 declare const runtime: MCPaC.McpRequires<[
-  'filesystem.listDirectory',
-  'filesystem.readFile'
+  'filesystem.list_directory',
+  'filesystem.read_file'
 ]>;
 
 // List directory
-const dir = await runtime.filesystem.listDirectory({ path: '.' });
+const dir = await runtime.filesystem.list_directory({ path: '.' });
 const listText = dir.content.find(c => c.type === 'text')?.text;
 console.log('Directory listing:', listText);
 
 // Read file
-const file = await runtime.filesystem.readFile({ path: 'README.md' });
+const file = await runtime.filesystem.read_file({ path: 'README.md' });
 const content = file.content.find(c => c.type === 'text')?.text;
 console.log('Content length:', content?.length);
 ```
@@ -391,7 +392,7 @@ Run:
 
 ```bash
 mcpac execute -f script.ts \
-  --grant filesystem.listDirectory,filesystem.readFile
+  --grant filesystem.list_directory,filesystem.read_file
 ```
 
 ### Example 2: GitHub Integration
@@ -408,9 +409,9 @@ mcpac generate
 ```
 
 ```ts
-declare const runtime: MCPaC.McpRequires<['github.createIssue']>;
+declare const runtime: MCPaC.McpRequires<['github.create_issue']>;
 
-const result = await runtime.github.createIssue({
+const result = await runtime.github.create_issue({
   owner: 'username',
   repo: 'repository',
   title: 'Bug Report',
@@ -424,7 +425,7 @@ console.log('Created issue:', text);
 Run:
 
 ```bash
-mcpac execute -f script.ts --grant github.createIssue
+mcpac execute -f script.ts --grant github.create_issue
 ```
 
 ### Example 3: Multi-tool workflow with loops
@@ -444,12 +445,12 @@ You can let an agent write code that reads this configuration and creates issues
 ```ts
 // Use both filesystem and GitHub tools in a loop
 declare const runtime: MCPaC.McpRequires<[
-  'filesystem.readFile',
-  'github.createIssue'
+  'filesystem.read_file',
+  'github.create_issue'
 ]>;
 
 // Read issue definitions from a local JSON file
-const fileResult = await runtime.filesystem.readFile({ path: './issues.json' });
+const fileResult = await runtime.filesystem.read_file({ path: './issues.json' });
 const text = fileResult.content.find(c => c.type === 'text')?.text ?? '[]';
 
 type IssueDef = { title: string; body: string };
@@ -457,7 +458,7 @@ const issues = JSON.parse(text) as IssueDef[];
 
 // Create issues on GitHub in a loop
 for (const issue of issues) {
-  const result = await runtime.github.createIssue({
+  const result = await runtime.github.create_issue({
     owner: 'username',
     repo: 'repository',
     title: issue.title,
@@ -472,7 +473,7 @@ for (const issue of issues) {
 Run:
 
 ```bash
-mcpac execute -f script.ts --grant filesystem.readFile,github.createIssue
+mcpac execute -f script.ts --grant filesystem.read_file,github.create_issue
 ```
 
 In a real agent workflow, this kind of multi-tool loop lives entirely in the execution environment:  
